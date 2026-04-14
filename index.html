@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Digitalisasi by MSTD - PENILAIAN LOMBA (Supabase)</title>
+    <title>Digitalisasi Monitoring - PENILAIAN LOMBA (Supabase)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -470,18 +470,23 @@
             font-size: 0.7rem;
             margin-top: 0.3rem;
         }
+        .small-text {
+            font-size: 0.6rem;
+            color: #64748b;
+        }
     </style>
 </head>
 <body>
 <div id="loginContainer" class="login-container">
     <div class="login-box">
-        <h2>🔐 LOGIN Digitalisasi by MSTD</h2>
-        <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
+        <h2>🔐 LOGIN Digitalisasi Monitoring</h2>
+        <input type="text" id="loginUsername" placeholder="NIK / Username" autocomplete="off">
         <button id="loginBtn">LOGIN</button>
         <div id="loginError" class="login-error"></div>
-        <div id="loginLoading" class="login-loading" style="display:none;">⏳ Tunggu sebentar...</div>
+        <div id="loginLoading" class="login-loading" style="display:none;">⏳ Menghubungkan ke database...</div>
         <div style="margin-top:1rem; font-size:0.7rem; color:#64748b; text-align:center;">
-            MASUKKAN NIK WORKDAY
+            Admin: NKP / ERW<br>
+            Juri: login pakai NIK yang didaftarkan admin
         </div>
     </div>
 </div>
@@ -495,9 +500,11 @@
             <div style="display:flex; flex-wrap:wrap; gap:1rem;">
                 <div style="flex:1">
                     <h3>👨‍⚖️ JURI</h3>
-                    <input type="text" id="juriName" placeholder="Nama Juri">
+                    <input type="text" id="juriNIK" placeholder="NIK (digunakan untuk login)">
+                    <input type="text" id="juriName" placeholder="Nama Lengkap" style="margin-top:0.5rem;">
                     <button class="btn-primary" id="addJuriBtn" style="margin-top:0.5rem">+ TAMBAH JURI</button>
                     <div id="juriList" class="card-list"></div>
+                    <div class="small-text" style="margin-top:0.5rem;">⚠️ Juri login menggunakan NIK</div>
                 </div>
                 <div style="flex:2">
                     <h3>👥 PESERTA</h3>
@@ -645,7 +652,11 @@
                 await loadAllData();
             }
             if (juriData.length === 0) {
-                await supabaseClient.from('juri').insert([{ id: Date.now(), nama: 'HERU' }, { id: Date.now()+1, nama: 'SITI' }, { id: Date.now()+2, nama: 'BUDI' }]);
+                await supabaseClient.from('juri').insert([
+                    { id: Date.now(), nik: '1001', nama: 'HERU' }, 
+                    { id: Date.now()+1, nik: '1002', nama: 'SITI' }, 
+                    { id: Date.now()+2, nik: '1003', nama: 'BUDI' }
+                ]);
                 await loadAllData();
             }
             if (pesertaData.length === 0) {
@@ -673,15 +684,15 @@
             renderAllUI();
         }
         
-        async function addJuri(nama) {
-            const newJuri = { id: Date.now(), nama: nama.toUpperCase() };
+        async function addJuri(nik, nama) {
+            const newJuri = { id: Date.now(), nik: nik.toUpperCase(), nama: nama.toUpperCase() };
             const { error } = await supabaseClient.from('juri').insert([newJuri]);
             if (error) {
                 showToast('Gagal tambah juri: ' + error.message, true);
                 return false;
             }
             await loadAllData();
-            showToast('Juri ' + nama + ' berhasil ditambahkan');
+            showToast('Juri ' + nama + ' (NIK: ' + nik + ') berhasil ditambahkan');
             return true;
         }
         
@@ -816,9 +827,9 @@
         function renderJuriList() {
             const container = document.getElementById('juriList');
             if(!container) return;
-            container.innerHTML = juriData.map(j => `<div class="card-item"><span>👨‍⚖️ ${j.nama || 'Unknown'}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
+            container.innerHTML = juriData.map(j => `<div class="card-item"><span>👨‍⚖️ <strong>${j.nik || '-'}</strong> - ${j.nama || 'Unknown'}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
             const filterJuri = document.getElementById('filterJuriRiwayat');
-            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nama || 'Unknown'}</option>`).join('');
+            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nik || j.nama || 'Unknown'}</option>`).join('');
         }
         
         function renderPesertaList() {
@@ -944,7 +955,7 @@
                         detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30) || ''}</span><span><strong>${nk.nilai || 0}</strong></span></div>`;
                     });
                 }
-                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">📌 ${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">👨‍⚖️ ${juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">🏆 TOTAL SKOR: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div></div>`;
+                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">📌 ${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">👨‍⚖️ ${juri?.nik || juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">🏆 TOTAL SKOR: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div></div>`;
             }).join('');
         }
         
@@ -956,14 +967,14 @@
                     const totalNilai = Array.isArray(pen.nilaiPerKriteria) ? pen.nilaiPerKriteria.reduce((s, nk) => s + (nk.nilai || 0), 0) : 0;
                     totalSkor += totalNilai;
                     const juri = juriData.find(j => j.id === pen.juriId);
-                    if(juri) skorPerJuri[juri.nama] = (skorPerJuri[juri.nama] || 0) + totalNilai;
+                    if(juri) skorPerJuri[juri.nik || juri.nama] = (skorPerJuri[juri.nik || juri.nama] || 0) + totalNilai;
                 });
                 return { ...p, totalSkor, skorPerJuri };
             });
             pesertaScores.sort((a,b) => b.totalSkor - a.totalSkor);
             document.getElementById('scoreCardList').innerHTML = pesertaScores.map((ps, i) => `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'})</div><div class="score-badge">🏆 TOTAL: ${ps.totalSkor}</div><div class="juri-scores">${Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('')}</div></div>`).join('');
             
-            const juriNames = [...new Set(juriData.map(j => j.nama))];
+            const juriNames = [...new Set(juriData.map(j => j.nik || j.nama))];
             const datasets = juriNames.map((jn, idx) => ({ label: jn, data: pesertaScores.map(ps => ps.skorPerJuri[jn] || 0), backgroundColor: `hsl(${idx * 60}, 70%, 50%)`, stack: 'stack0', datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 9 } } }));
             const ctx = document.getElementById('scoreChart').getContext('2d');
             if(chartInstance) chartInstance.destroy();
@@ -990,7 +1001,7 @@
                         detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,25) || ''}</span><span>${nk.nilai || 0}</span></div>`; 
                     });
                 }
-                return `<div class="riwayat-card"><div class="riwayat-header"><span>📌 ${peserta?.nama || 'Unknown'}</span><span>👨‍⚖️ ${juri?.nama || 'Unknown'}</span></div>${detail}<div class="riwayat-total">🏆 TOTAL: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div>`;
+                return `<div class="riwayat-card"><div class="riwayat-header"><span>📌 ${peserta?.nama || 'Unknown'}</span><span>👨‍⚖️ ${juri?.nik || juri?.nama || 'Unknown'}</span></div>${detail}<div class="riwayat-total">🏆 TOTAL: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div>`;
             }).join('');
         }
         
@@ -1014,13 +1025,15 @@
         
         function login(username) {
             const upper = username.toUpperCase().trim();
+            // Admin
             if(upper === 'NKP' || upper === 'ERW') {
                 currentUser = { username: upper, role: 'admin', juriId: null };
                 return true;
             }
-            const juri = juriData.find(j => j.nama && j.nama.toUpperCase() === upper);
+            // Juri login pakai NIK
+            const juri = juriData.find(j => j.nik && j.nik.toUpperCase() === upper);
             if(juri) {
-                currentUser = { username: juri.nama, role: 'juri', juriId: juri.id };
+                currentUser = { username: juri.nik, nama: juri.nama, role: 'juri', juriId: juri.id };
                 return true;
             }
             return false;
@@ -1049,9 +1062,9 @@
         function renderNavbar() {
             const container = document.getElementById('navbarContainer');
             if(currentUser.role === 'admin') {
-                container.innerHTML = `<button class="nav-btn" data-nav="dashboard">📊 DASHBOARD</button><button class="nav-btn" data-nav="form">📝 FORM</button><button class="nav-btn" data-nav="management">⚙️ MANAGEMENT</button><div class="user-section"><span class="user-info">👑 ${currentUser.username}</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
+                container.innerHTML = `<button class="nav-btn" data-nav="dashboard">📊 DASHBOARD</button><button class="nav-btn" data-nav="form">📝 FORM</button><button class="nav-btn" data-nav="management">⚙️ MANAGEMENT</button><div class="user-section"><span class="user-info">👑 ADMIN ${currentUser.username}</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
             } else {
-                container.innerHTML = `<button class="nav-btn" data-nav="form">📝 FORM</button><div class="user-section"><span class="user-info">👨‍⚖️ ${currentUser.username}</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
+                container.innerHTML = `<button class="nav-btn" data-nav="form">📝 FORM</button><div class="user-section"><span class="user-info">👨‍⚖️ ${currentUser.nama || currentUser.username} (${currentUser.username})</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
             }
             document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
                 document.querySelectorAll('.panel').forEach(p => p.classList.remove('active-panel'));
@@ -1079,7 +1092,7 @@
             if(login(username)) {
                 showApp();
             } else {
-                document.getElementById('loginError').innerHTML = 'Username tidak ditemukan! (Admin: NKP/ERW, Juri: HERU/SITI/BUDI)';
+                document.getElementById('loginError').innerHTML = 'NIK / Username tidak ditemukan! (Admin: NKP/ERW, Juri: NIK yang didaftarkan)';
             }
             loadingDiv.style.display = 'none';
         });
@@ -1089,8 +1102,17 @@
         });
         
         document.getElementById('addJuriBtn')?.addEventListener('click', async () => {
+            const nik = document.getElementById('juriNIK').value.trim();
             const nama = document.getElementById('juriName').value.trim();
-            if(nama) await addJuri(nama);
+            if(!nik) { showToast('NIK wajib diisi!', true); return; }
+            if(!nama) { showToast('Nama juri wajib diisi!', true); return; }
+            // Cek duplikat NIK
+            if(juriData.some(j => j.nik === nik.toUpperCase())) {
+                showToast('NIK sudah terdaftar!', true);
+                return;
+            }
+            await addJuri(nik, nama);
+            document.getElementById('juriNIK').value = '';
             document.getElementById('juriName').value = '';
         });
         
