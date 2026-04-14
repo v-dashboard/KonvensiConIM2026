@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>PDCARP - PENILAIAN LOMBA (Supabase)</title>
+    <title>Digitalisasi by MSTD - PENILAIAN LOMBA (Supabase)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -231,13 +231,15 @@
             background: #8b5cf6;
             color: white;
             border: none;
-            padding: 0.4rem 1rem;
+            padding: 0.5rem 1rem;
             border-radius: 2rem;
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: bold;
-            margin-top: 0.5rem;
+            margin-top: 0.8rem;
+            width: 100%;
         }
+        button.btn-ppt:hover { background: #7c3aed; }
         .card-list {
             margin-top: 1rem;
             display: flex;
@@ -455,21 +457,31 @@
             margin-top: 0.5rem;
             word-break: break-all;
             font-size: 0.7rem;
+        }
+        .link-ppt a {
             color: #3b82f6;
+            text-decoration: none;
+        }
+        .link-ppt a:hover {
+            text-decoration: underline;
+        }
+        .ppt-warning {
+            color: #f59e0b;
+            font-size: 0.7rem;
+            margin-top: 0.3rem;
         }
     </style>
 </head>
 <body>
 <div id="loginContainer" class="login-container">
     <div class="login-box">
-        <h2>🔐 LOGIN PDCARP</h2>
+        <h2>🔐 LOGIN Digitalisasi by MSTD</h2>
         <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
         <button id="loginBtn">LOGIN</button>
         <div id="loginError" class="login-error"></div>
-        <div id="loginLoading" class="login-loading" style="display:none;">⏳ Menghubungkan ke database...</div>
+        <div id="loginLoading" class="login-loading" style="display:none;">⏳ Tunggu sebentar...</div>
         <div style="margin-top:1rem; font-size:0.7rem; color:#64748b; text-align:center;">
-            Admin: NKP / ERW<br>
-            Juri: HERU / SITI / BUDI
+            MASUKKAN NIK WORKDAY
         </div>
     </div>
 </div>
@@ -498,7 +510,7 @@
                         </select>
                     </div>
                     <input type="text" id="judulConim" placeholder="Judul Improvement">
-                    <input type="url" id="linkPPT" placeholder="Link PPT Improvement (Google Drive / YouTube embed / File URL)" style="margin-top:0.5rem;">
+                    <input type="url" id="linkppt" placeholder="Link PPT Improvement (Google Drive / YouTube / File URL)" style="margin-top:0.5rem;">
                     <button class="btn-primary" id="addPesertaBtn" style="margin-top:0.5rem">+ TAMBAH PESERTA</button>
                     <div id="pesertaList" class="card-list"></div>
                 </div>
@@ -613,15 +625,6 @@
         ];
         
         async function initSupabase() {
-            if (!SUPABASE_URL || SUPABASE_URL === "https://YOUR_PROJECT.supabase.co") {
-                document.getElementById('loginError').innerHTML = '⚠️ Konfigurasi Supabase belum diisi! Ganti URL dan Key di kode.';
-                return false;
-            }
-            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "YOUR_ANON_KEY") {
-                document.getElementById('loginError').innerHTML = '⚠️ Konfigurasi Supabase belum diisi! Ganti Anon Key di kode.';
-                return false;
-            }
-            
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             const { error } = await supabaseClient.from('juri').select('count', { count: 'exact', head: true });
             if (error) {
@@ -647,9 +650,9 @@
             }
             if (pesertaData.length === 0) {
                 await supabaseClient.from('peserta').insert([
-                    { id: Date.now()+3, nama: 'TIM INOVASI QCC', channel: 'QCC', judulConim: 'PENINGKATAN EFISIENSI PRODUKSI DENGAN METODE KAIZEN', linkPPT: 'https://docs.google.com/presentation/d/example1/edit' },
-                    { id: Date.now()+4, nama: 'TIM DIGITAL SS', channel: 'SS', judulConim: 'DIGITALISASI PROSES BISNIS UNTUK MENINGKATKAN PRODUKTIVITAS', linkPPT: 'https://docs.google.com/presentation/d/example2/edit' },
-                    { id: Date.now()+5, nama: 'TIM QCP MAJU', channel: 'QCP', judulConim: 'IMPLEMENTASI TOTAL QUALITY MANAGEMENT DI LINI PRODUKSI', linkPPT: 'https://docs.google.com/presentation/d/example3/edit' }
+                    { id: Date.now()+3, nama: 'TIM INOVASI QCC', channel: 'QCC', judulConim: 'PENINGKATAN EFISIENSI PRODUKSI DENGAN METODE KAIZEN', linkppt: null },
+                    { id: Date.now()+4, nama: 'TIM DIGITAL SS', channel: 'SS', judulConim: 'DIGITALISASI PROSES BISNIS UNTUK MENINGKATKAN PRODUKTIVITAS', linkppt: null },
+                    { id: Date.now()+5, nama: 'TIM QCP MAJU', channel: 'QCP', judulConim: 'IMPLEMENTASI TOTAL QUALITY MANAGEMENT DI LINI PRODUKSI', linkppt: null }
                 ]);
                 await loadAllData();
             }
@@ -694,8 +697,8 @@
             return true;
         }
         
-        async function addPeserta(nama, channel, judul, linkPPT) {
-            const newPeserta = { id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase(), linkPPT: linkPPT || null };
+        async function addPeserta(nama, channel, judul, linkppt) {
+            const newPeserta = { id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase(), linkppt: linkppt || null };
             const { error } = await supabaseClient.from('peserta').insert([newPeserta]);
             if (error) {
                 showToast('Gagal tambah peserta: ' + error.message, true);
@@ -734,7 +737,6 @@
             const { error } = await supabaseClient.from('kriteria').insert([newKriteria]);
             if (error) {
                 showToast('Gagal tambah kriteria: ' + error.message, true);
-                console.error('Error insert kriteria:', error);
                 return false;
             }
             await loadAllData();
@@ -824,7 +826,7 @@
             if(container) {
                 container.innerHTML = pesertaData.map(p => {
                     const judulDisplay = (p.judulConim && p.judulConim.substring) ? p.judulConim.substring(0,50) : (p.judulConim || '-');
-                    const pptLink = p.linkPPT ? `<div class="link-ppt">🔗 PPT: <a href="${p.linkPPT}" target="_blank">Lihat PPT</a></div>` : '<div class="link-ppt">⚠️ Belum upload PPT</div>';
+                    const pptLink = p.linkppt ? `<div class="link-ppt">🔗 <a href="${p.linkppt}" target="_blank">Lihat PPT</a></div>` : '<div class="ppt-warning">⚠️ Belum upload PPT</div>';
                     return `<div class="card-item"><div><strong>${p.nama || 'Unknown'}</strong> (${p.channel || '-'})<br><small>📌 ${judulDisplay}${(p.judulConim && p.judulConim.length > 50) ? '...' : ''}</small>${pptLink}</div><button class="btn-danger" onclick="window.deletePesertaWrapper(${p.id})">HAPUS</button></div>`;
                 }).join('');
             }
@@ -1096,13 +1098,13 @@
             const nama = document.getElementById('pesertaName').value.trim();
             const channel = document.getElementById('channelSelect').value;
             const judul = document.getElementById('judulConim').value.trim();
-            const linkPPT = document.getElementById('linkPPT').value.trim();
+            const linkppt = document.getElementById('linkppt').value.trim();
             if(!nama) { showToast('Nama peserta wajib diisi!', true); return; }
             if(!judul) { showToast('Judul improvement wajib diisi!', true); return; }
-            await addPeserta(nama, channel, judul, linkPPT || null);
+            await addPeserta(nama, channel, judul, linkppt || null);
             document.getElementById('pesertaName').value = '';
             document.getElementById('judulConim').value = '';
-            document.getElementById('linkPPT').value = '';
+            document.getElementById('linkppt').value = '';
         });
         
         document.getElementById('addKriteriaBtn')?.addEventListener('click', async () => {
@@ -1144,8 +1146,8 @@
             if(pid) {
                 const p = pesertaData.find(p => p.id === parseInt(pid));
                 if(p) {
-                    const pptButton = p.linkPPT ? `<button class="btn-ppt" onclick="window.open('${p.linkPPT}', '_blank')">📽️ LIHAT PPT IMPROVEMENT</button>` : '<div style="color:#ef4444; font-size:0.7rem;">⚠️ Belum ada link PPT</div>';
-                    document.getElementById('infoPeserta').innerHTML = `<div class="nama">🏷️ ${p.nama || 'Unknown'}</div><div>📡 CHANNEL: ${p.channel || '-'}</div><div>💡 JUDUL IMPROVEMENT:<br>${p.judulConim || '-'}</div>${pptButton}`;
+                    const pptButton = p.linkppt ? `<button class="btn-ppt" onclick="window.open('${p.linkppt}', '_blank')">📽️ LIHAT PPT IMPROVEMENT</button>` : '<div class="ppt-warning">⚠️ Belum ada link PPT yang diupload</div>';
+                    document.getElementById('infoPeserta').innerHTML = `<div style="font-weight:bold; margin-bottom:0.5rem;">🏷️ ${p.nama || 'Unknown'}</div><div>📡 CHANNEL: ${p.channel || '-'}</div><div>💡 JUDUL IMPROVEMENT:<br>${p.judulConim || '-'}</div>${pptButton}`;
                     document.getElementById('infoPeserta').style.display = 'block';
                 }
             } else {
