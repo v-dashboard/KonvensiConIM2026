@@ -232,6 +232,8 @@
             display: flex;
             flex-direction: column;
             gap: 0.7rem;
+            max-height: 400px;
+            overflow-y: auto;
         }
         .card-item {
             background: #f8fafc;
@@ -359,6 +361,7 @@
             font-size: 0.7rem;
         }
         .alert-error { background: #fee2e2; color: #b91c1c; }
+        .alert-success { background: #dcfce7; color: #166534; }
         .dashboard-stats {
             display: grid;
             grid-template-columns: 1fr;
@@ -421,6 +424,22 @@
             margin-bottom: 1.2rem;
         }
         .riwayat-container { max-height: 400px; overflow-y: auto; }
+        .toast-notif {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -554,6 +573,15 @@
         let kriteriaData = [];
         let penilaianData = [];
         
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-notif';
+            toast.style.background = isError ? '#ef4444' : '#10b981';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
         const DEFAULT_KRITERIA = [
             { kode:"1A", nama:"IDENTIFIKASI MASALAH & PENENTUAN TEMA", 
               descKurang:"TIDAK ADA IDENTIFIKASI YANG JELAS", descCukup:"PRIORITAS DITINJAU DARI SEBAGIAN ASPEK", descBaik:"DATA LENGKAP DAN AKURAT", descExcellent:"SEMUA ASPEK MUTU, DATA LENGKAP", bobot:10, urutan:1 },
@@ -594,9 +622,11 @@
                 for (const k of DEFAULT_KRITERIA) {
                     await supabaseClient.from('kriteria').insert([k]);
                 }
+                await loadAllData();
             }
             if (juriData.length === 0) {
                 await supabaseClient.from('juri').insert([{ id: Date.now(), nama: 'HERU' }, { id: Date.now()+1, nama: 'SITI' }, { id: Date.now()+2, nama: 'BUDI' }]);
+                await loadAllData();
             }
             if (pesertaData.length === 0) {
                 await supabaseClient.from('peserta').insert([
@@ -604,8 +634,8 @@
                     { id: Date.now()+4, nama: 'TIM DIGITAL SS', channel: 'SS', judulConim: 'DIGITALISASI PROSES BISNIS UNTUK MENINGKATKAN PRODUKTIVITAS' },
                     { id: Date.now()+5, nama: 'TIM QCP MAJU', channel: 'QCP', judulConim: 'IMPLEMENTASI TOTAL QUALITY MANAGEMENT DI LINI PRODUKSI' }
                 ]);
+                await loadAllData();
             }
-            await loadAllData();
         }
         
         async function loadAllData() {
@@ -623,74 +653,130 @@
             renderAllUI();
         }
         
-        async function saveJuri() { if(supabaseClient) await supabaseClient.from('juri').upsert(juriData); }
-        async function savePeserta() { if(supabaseClient) await supabaseClient.from('peserta').upsert(pesertaData); }
-        async function saveKriteria() { if(supabaseClient) await supabaseClient.from('kriteria').upsert(kriteriaData); }
-        async function savePenilaian() { if(supabaseClient) await supabaseClient.from('penilaian').upsert(penilaianData); }
-        
         async function addJuri(nama) {
-            juriData.push({ id: Date.now(), nama: nama.toUpperCase() });
-            await saveJuri();
+            const newJuri = { id: Date.now(), nama: nama.toUpperCase() };
+            const { error } = await supabaseClient.from('juri').insert([newJuri]);
+            if (error) {
+                showToast('Gagal tambah juri: ' + error.message, true);
+                return false;
+            }
             await loadAllData();
+            showToast('Juri ' + nama + ' berhasil ditambahkan');
+            return true;
         }
         
         async function deleteJuri(id) {
-            juriData = juriData.filter(j => j.id !== id);
-            penilaianData = penilaianData.filter(p => p.juriId !== id);
-            await saveJuri();
-            await savePenilaian();
+            const { error } = await supabaseClient.from('juri').delete().eq('id', id);
+            if (error) {
+                showToast('Gagal hapus juri', true);
+                return false;
+            }
+            await supabaseClient.from('penilaian').delete().eq('juriId', id);
             await loadAllData();
+            showToast('Juri berhasil dihapus');
+            return true;
         }
         
         async function addPeserta(nama, channel, judul) {
-            pesertaData.push({ id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase() });
-            await savePeserta();
+            const newPeserta = { id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase() };
+            const { error } = await supabaseClient.from('peserta').insert([newPeserta]);
+            if (error) {
+                showToast('Gagal tambah peserta: ' + error.message, true);
+                return false;
+            }
             await loadAllData();
+            showToast('Peserta ' + nama + ' berhasil ditambahkan');
+            return true;
         }
         
         async function deletePeserta(id) {
-            pesertaData = pesertaData.filter(p => p.id !== id);
-            penilaianData = penilaianData.filter(p => p.pesertaId !== id);
-            await savePeserta();
-            await savePenilaian();
+            const { error } = await supabaseClient.from('peserta').delete().eq('id', id);
+            if (error) {
+                showToast('Gagal hapus peserta', true);
+                return false;
+            }
+            await supabaseClient.from('penilaian').delete().eq('pesertaId', id);
             await loadAllData();
+            showToast('Peserta berhasil dihapus');
+            return true;
         }
         
-        async function addKriteria(k) {
-            kriteriaData.push({ ...k, id: Date.now() });
-            await saveKriteria();
+        async function addKriteria(kriteria) {
+            const newKriteria = { 
+                id: Date.now(),
+                kode: kriteria.kode || '',
+                nama: kriteria.nama,
+                descKurang: kriteria.descKurang || '',
+                descCukup: kriteria.descCukup || '',
+                descBaik: kriteria.descBaik || '',
+                descExcellent: kriteria.descExcellent || '',
+                bobot: kriteria.bobot || 10,
+                urutan: kriteria.urutan || (kriteriaData.length + 1)
+            };
+            
+            const { error } = await supabaseClient.from('kriteria').insert([newKriteria]);
+            if (error) {
+                showToast('Gagal tambah kriteria: ' + error.message, true);
+                console.error('Error insert kriteria:', error);
+                return false;
+            }
             await loadAllData();
+            showToast('Kriteria ' + kriteria.nama + ' berhasil ditambahkan');
+            return true;
         }
         
         async function updateKriteria(k) {
-            await supabaseClient.from('kriteria').upsert(k);
+            const { error } = await supabaseClient.from('kriteria').update(k).eq('id', k.id);
+            if (error) {
+                showToast('Gagal update kriteria', true);
+                return false;
+            }
             await loadAllData();
+            showToast('Kriteria berhasil diupdate');
+            return true;
         }
         
         async function deleteKriteria(id) {
-            kriteriaData = kriteriaData.filter(k => k.id !== id);
-            await saveKriteria();
+            const { error } = await supabaseClient.from('kriteria').delete().eq('id', id);
+            if (error) {
+                showToast('Gagal hapus kriteria', true);
+                return false;
+            }
             await loadAllData();
+            showToast('Kriteria berhasil dihapus');
+            return true;
         }
         
         async function submitPenilaianToDb(pesertaId, juriId, nilaiPerKriteria) {
-            penilaianData.unshift({
+            const newPenilaian = {
                 id: Date.now(),
                 pesertaId: parseInt(pesertaId),
                 juriId: parseInt(juriId),
-                tanggal: new Date().toLocaleString(),
+                tanggal: new Date().toLocaleString('id-ID'),
                 nilaiPerKriteria: nilaiPerKriteria
-            });
-            await savePenilaian();
+            };
+            const { error } = await supabaseClient.from('penilaian').insert([newPenilaian]);
+            if (error) {
+                showToast('Gagal simpan penilaian: ' + error.message, true);
+                return false;
+            }
             await loadAllData();
+            showToast('Penilaian berhasil disimpan!');
+            return true;
         }
         
         async function resetDefaultKriteria() {
-            await supabaseClient.from('kriteria').delete().neq('id', 0);
+            const { error } = await supabaseClient.from('kriteria').delete().neq('id', 0);
+            if (error) {
+                showToast('Gagal reset kriteria', true);
+                return false;
+            }
             for (const k of DEFAULT_KRITERIA) {
-                await supabaseClient.from('kriteria').insert([k]);
+                await supabaseClient.from('kriteria').insert([{ ...k, id: Date.now() + Math.random() }]);
             }
             await loadAllData();
+            showToast('Kriteria berhasil direset ke default');
+            return true;
         }
         
         function sudahMenilai(juriId, pesertaId) {
@@ -742,28 +828,35 @@
         function renderKriteriaMgmt() {
             const container = document.getElementById('kriteriaListMgmt');
             if(!container) return;
-            container.innerHTML = kriteriaData.map(k => `<div class="card-item" style="flex-direction:column;"><div><strong>[${k.kode || ''}] ${k.nama || 'Unknown'}</strong> <button class="btn-warning" onclick="window.editKriteriaWrapper(${k.id})">EDIT</button><button class="btn-danger" onclick="window.deleteKriteriaWrapper(${k.id})">HAPUS</button></div></div>`).join('');
+            if(kriteriaData.length === 0) {
+                container.innerHTML = '<div class="card-item">Belum ada kriteria. Klik "TAMBAH KRITERIA"</div>';
+                return;
+            }
+            container.innerHTML = kriteriaData.map(k => `<div class="card-item" style="flex-direction:column; align-items:flex-start;"><div><strong>[${k.kode || ''}] ${k.nama || 'Unknown'}</strong> <button class="btn-warning" onclick="window.editKriteriaWrapper(${k.id})">EDIT</button><button class="btn-danger" onclick="window.deleteKriteriaWrapper(${k.id})">HAPUS</button></div><div style="font-size:0.65rem; color:#666;">Bobot: ${k.bobot || 10} | Urutan: ${k.urutan || '-'}</div></div>`).join('');
         }
         
         function renderFormKriteriaNilai() {
             const container = document.getElementById('dynamicKriteriaNilai');
             if(!container) return;
-            if(kriteriaData.length === 0) { container.innerHTML = '<div class="alert alert-error">BELUM ADA KRITERIA</div>'; return; }
+            if(kriteriaData.length === 0) { 
+                container.innerHTML = '<div class="alert alert-error">⚠️ BELUM ADA KRITERIA. ADMIN HARAP TAMBAH KRITERIA DULU DI MENU MANAGEMENT!</div>'; 
+                return; 
+            }
             container.innerHTML = kriteriaData.map(k => {
                 let circles = '';
                 const maxBobot = k.bobot || 10;
                 for(let i=1; i<=maxBobot; i++) {
                     circles += `<div class="circle" id="circle_${k.id}_${i}" data-score="${i}" onclick="window.setRating(${k.id}, ${i})">${i}</div>`;
                 }
-                return `<div class="kriteria-card"><div class="kriteria-header">[${k.kode || ''}] ${k.nama || 'Unknown'}</div>
+                return `<div class="kriteria-card"><div class="kriteria-header">📌 [${k.kode || ''}] ${k.nama || 'Unknown'}</div>
                         <div class="rubrik-grid">
-                            <div class="rubrik-item rubrik-kurang"><div class="rubrik-title">KURANG (1-4)</div><div>${k.descKurang || '-'}</div></div>
-                            <div class="rubrik-item rubrik-cukup"><div class="rubrik-title">CUKUP (5-6)</div><div>${k.descCukup || '-'}</div></div>
-                            <div class="rubrik-item rubrik-baik"><div class="rubrik-title">BAIK (7-8)</div><div>${k.descBaik || '-'}</div></div>
-                            <div class="rubrik-item rubrik-excellent"><div class="rubrik-title">EXCELLENT (9-10)</div><div>${k.descExcellent || '-'}</div></div>
+                            <div class="rubrik-item rubrik-kurang"><div class="rubrik-title">🔴 KURANG (1-4)</div><div>${k.descKurang || '-'}</div></div>
+                            <div class="rubrik-item rubrik-cukup"><div class="rubrik-title">🟠 CUKUP (5-6)</div><div>${k.descCukup || '-'}</div></div>
+                            <div class="rubrik-item rubrik-baik"><div class="rubrik-title">🔵 BAIK (7-8)</div><div>${k.descBaik || '-'}</div></div>
+                            <div class="rubrik-item rubrik-excellent"><div class="rubrik-title">🟢 EXCELLENT (9-10)</div><div>${k.descExcellent || '-'}</div></div>
                         </div>
                         <div class="rating-circles">${circles}</div>
-                        <div id="selected_value_${k.id}" style="font-size:0.7rem; text-align:center; margin-top:0.3rem;"></div>
+                        <div id="selected_value_${k.id}" style="font-size:0.7rem; text-align:center; margin-top:0.3rem; color:#3b82f6;"></div>
                     </div>`;
             }).join('');
         }
@@ -775,30 +868,43 @@
                 if(el) i<=score ? el.classList.add('active') : el.classList.remove('active');
             }
             const span = document.getElementById(`selected_value_${kriteriaId}`);
-            if(span) span.innerHTML = `NILAI: ${score}`;
+            if(span) span.innerHTML = `⭐ NILAI TERPILIH: ${score} ⭐`;
         };
         
         async function handleSubmitPenilaian() {
             const pesertaId = document.getElementById('dropdownPeserta').value;
-            if(!pesertaId) return alert('Pilih peserta');
-            if(currentUser?.role !== 'juri') return alert('Hanya juri yang bisa menilai');
-            if(sudahMenilai(currentUser.juriId, parseInt(pesertaId))) return alert('Anda sudah menilai peserta ini');
+            if(!pesertaId) {
+                showToast('Pilih peserta dulu!', true);
+                return;
+            }
+            if(currentUser?.role !== 'juri') {
+                showToast('Hanya juri yang bisa menilai!', true);
+                return;
+            }
+            if(sudahMenilai(currentUser.juriId, parseInt(pesertaId))) {
+                showToast('Anda sudah menilai peserta ini!', true);
+                return;
+            }
             const nilaiPerKriteria = [];
             for(const k of kriteriaData) {
                 const val = nilaiKriteria[k.id];
-                if(!val) return alert(`Isi semua kriteria: ${k.nama}`);
+                if(!val) {
+                    showToast(`Isi semua kriteria! (${k.nama})`, true);
+                    return;
+                }
                 nilaiPerKriteria.push({ kriteriaId: k.id, nilai: val });
             }
-            await submitPenilaianToDb(pesertaId, currentUser.juriId, nilaiPerKriteria);
-            nilaiKriteria = {};
-            renderFormKriteriaNilai();
-            renderDropdownPeserta();
-            renderRiwayatForm();
-            renderDashboard();
-            renderRiwayatAll();
-            document.getElementById('dropdownPeserta').value = '';
-            document.getElementById('infoPeserta').style.display = 'none';
-            alert('Penilaian tersimpan!');
+            const success = await submitPenilaianToDb(pesertaId, currentUser.juriId, nilaiPerKriteria);
+            if(success) {
+                nilaiKriteria = {};
+                renderFormKriteriaNilai();
+                renderDropdownPeserta();
+                renderRiwayatForm();
+                renderDashboard();
+                renderRiwayatAll();
+                document.getElementById('dropdownPeserta').value = '';
+                document.getElementById('infoPeserta').style.display = 'none';
+            }
         }
         
         function renderRiwayatForm() {
@@ -806,7 +912,7 @@
             if(!container) return;
             let data = [...penilaianData];
             if(currentUser?.role === 'juri' && currentUser.juriId) data = data.filter(p => p.juriId === currentUser.juriId);
-            if(data.length === 0) { container.innerHTML = '<div class="card-item">Belum ada penilaian</div>'; return; }
+            if(data.length === 0) { container.innerHTML = '<div class="card-item">📭 Belum ada penilaian</div>'; return; }
             container.innerHTML = data.map(pen => {
                 const peserta = pesertaData.find(p => p.id === pen.pesertaId);
                 const juri = juriData.find(j => j.id === pen.juriId);
@@ -815,10 +921,10 @@
                     pen.nilaiPerKriteria.forEach(nk => {
                         const k = kriteriaData.find(kr => kr.id === nk.kriteriaId);
                         total += nk.nilai || 0;
-                        detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30) || ''}</span><span>${nk.nilai || 0}</span></div>`;
+                        detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30) || ''}</span><span><strong>${nk.nilai || 0}</strong></span></div>`;
                     });
                 }
-                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">${juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal || '-'}</small></div></div>`;
+                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">📌 ${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">👨‍⚖️ ${juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">🏆 TOTAL SKOR: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div></div>`;
             }).join('');
         }
         
@@ -835,13 +941,13 @@
                 return { ...p, totalSkor, skorPerJuri };
             });
             pesertaScores.sort((a,b) => b.totalSkor - a.totalSkor);
-            document.getElementById('scoreCardList').innerHTML = pesertaScores.map((ps, i) => `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'})</div><div class="score-badge">Total: ${ps.totalSkor}</div><div class="juri-scores">${Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('')}</div></div>`).join('');
+            document.getElementById('scoreCardList').innerHTML = pesertaScores.map((ps, i) => `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'})</div><div class="score-badge">🏆 TOTAL: ${ps.totalSkor}</div><div class="juri-scores">${Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('')}</div></div>`).join('');
             
             const juriNames = [...new Set(juriData.map(j => j.nama))];
             const datasets = juriNames.map((jn, idx) => ({ label: jn, data: pesertaScores.map(ps => ps.skorPerJuri[jn] || 0), backgroundColor: `hsl(${idx * 60}, 70%, 50%)`, stack: 'stack0', datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 9 } } }));
             const ctx = document.getElementById('scoreChart').getContext('2d');
             if(chartInstance) chartInstance.destroy();
-            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => (p.nama || 'Unknown').substring(0,10)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { datalabels: { anchor: 'center', align: 'center' } } } });
+            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => (p.nama || 'Unknown').substring(0,10)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true, ticks: { font: { size: 9 } } }, y: { stacked: true, beginAtZero: true } }, plugins: { datalabels: { anchor: 'center', align: 'center' }, legend: { position: 'top', labels: { font: { size: 10 } } } } } });
         }
         
         function renderRiwayatAll() {
@@ -852,7 +958,7 @@
             const filterJuri = document.getElementById('filterJuriRiwayat')?.value;
             if(filterPeserta) data = data.filter(p => p.pesertaId === parseInt(filterPeserta));
             if(filterJuri) data = data.filter(p => p.juriId === parseInt(filterJuri));
-            if(data.length === 0) { container.innerHTML = '<div class="card-item">Tidak ada data</div>'; return; }
+            if(data.length === 0) { container.innerHTML = '<div class="card-item">📭 Tidak ada data</div>'; return; }
             container.innerHTML = data.map(pen => {
                 const peserta = pesertaData.find(p => p.id === pen.pesertaId);
                 const juri = juriData.find(j => j.id === pen.juriId);
@@ -861,10 +967,10 @@
                     pen.nilaiPerKriteria.forEach(nk => { 
                         const k = kriteriaData.find(kr => kr.id === nk.kriteriaId); 
                         total += nk.nilai || 0; 
-                        detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'}</span><span>${nk.nilai || 0}</span></div>`; 
+                        detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,25) || ''}</span><span>${nk.nilai || 0}</span></div>`; 
                     });
                 }
-                return `<div class="riwayat-card"><div class="riwayat-header"><span>${peserta?.nama || 'Unknown'}</span><span>${juri?.nama || 'Unknown'}</span></div>${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal || '-'}</small></div>`;
+                return `<div class="riwayat-card"><div class="riwayat-header"><span>📌 ${peserta?.nama || 'Unknown'}</span><span>👨‍⚖️ ${juri?.nama || 'Unknown'}</span></div>${detail}<div class="riwayat-total">🏆 TOTAL: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div>`;
             }).join('');
         }
         
@@ -874,8 +980,16 @@
         window.editKriteriaWrapper = async (id) => {
             const k = kriteriaData.find(kr => kr.id === id);
             if(!k) return;
-            const newNama = prompt('Nama kriteria', k.nama);
-            if(newNama) { k.nama = newNama; await updateKriteria(k); }
+            const newNama = prompt('Edit Nama Kriteria:', k.nama);
+            if(newNama && newNama !== k.nama) { 
+                k.nama = newNama; 
+                await updateKriteria(k); 
+            }
+            const newBobot = prompt('Edit Bobot Maksimal (1-10):', k.bobot);
+            if(newBobot && parseInt(newBobot) !== k.bobot) {
+                k.bobot = parseInt(newBobot);
+                await updateKriteria(k);
+            }
         };
         
         function login(username) {
@@ -924,6 +1038,7 @@
                 document.getElementById(`${btn.dataset.nav}Panel`).classList.add('active-panel');
                 if(btn.dataset.nav === 'form') { renderFormKriteriaNilai(); renderDropdownPeserta(); }
                 if(btn.dataset.nav === 'dashboard') renderDashboard();
+                if(btn.dataset.nav === 'management') renderKriteriaMgmt();
             }));
             document.getElementById('logoutBtnNav')?.addEventListener('click', () => { currentUser=null; document.getElementById('loginContainer').style.display='flex'; document.getElementById('appContent').style.display='none'; });
         }
@@ -944,7 +1059,7 @@
             if(login(username)) {
                 showApp();
             } else {
-                document.getElementById('loginError').innerHTML = 'Username tidak ditemukan!';
+                document.getElementById('loginError').innerHTML = 'Username tidak ditemukan! (Admin: NKP/ERW, Juri: HERU/SITI/BUDI)';
             }
             loadingDiv.style.display = 'none';
         });
@@ -963,14 +1078,19 @@
             const nama = document.getElementById('pesertaName').value.trim();
             const channel = document.getElementById('channelSelect').value;
             const judul = document.getElementById('judulConim').value.trim();
-            if(nama && judul) await addPeserta(nama, channel, judul);
+            if(!nama) { showToast('Nama peserta wajib diisi!', true); return; }
+            if(!judul) { showToast('Judul improvement wajib diisi!', true); return; }
+            await addPeserta(nama, channel, judul);
             document.getElementById('pesertaName').value = '';
             document.getElementById('judulConim').value = '';
         });
         
         document.getElementById('addKriteriaBtn')?.addEventListener('click', async () => {
             const nama = document.getElementById('kriteriaName').value.trim();
-            if(!nama) return alert('Nama kriteria wajib');
+            if(!nama) {
+                showToast('Nama kriteria wajib diisi!', true);
+                return;
+            }
             await addKriteria({
                 kode: document.getElementById('kriteriaKode').value.trim(),
                 nama: nama,
@@ -979,31 +1099,47 @@
                 descBaik: document.getElementById('descBaik').value,
                 descExcellent: document.getElementById('descExcellent').value,
                 bobot: parseInt(document.getElementById('kriteriaBobot').value) || 10,
-                urutan: parseInt(document.getElementById('kriteriaUrutan').value) || 1
+                urutan: parseInt(document.getElementById('kriteriaUrutan').value) || kriteriaData.length + 1
             });
+            // Clear form
             document.getElementById('kriteriaName').value = '';
             document.getElementById('kriteriaKode').value = '';
             document.getElementById('descKurang').value = '';
             document.getElementById('descCukup').value = '';
             document.getElementById('descBaik').value = '';
             document.getElementById('descExcellent').value = '';
+            document.getElementById('kriteriaBobot').value = '10';
+            document.getElementById('kriteriaUrutan').value = (kriteriaData.length + 1).toString();
         });
         
-        document.getElementById('resetDefaultBtn')?.addEventListener('click', async () => { if(confirm('Reset ke default kriteria?')) await resetDefaultKriteria(); });
+        document.getElementById('resetDefaultBtn')?.addEventListener('click', async () => { 
+            if(confirm('⚠️ RESET KE DEFAULT KRITERIA? Semua kriteria custom akan hilang!')) {
+                await resetDefaultKriteria();
+            }
+        });
+        
         document.getElementById('submitPenilaianBtn')?.addEventListener('click', handleSubmitPenilaian);
+        
         document.getElementById('dropdownPeserta')?.addEventListener('change', (e) => {
             const pid = e.target.value;
             if(pid) {
                 const p = pesertaData.find(p => p.id === parseInt(pid));
                 if(p) {
-                    document.getElementById('infoPeserta').innerHTML = `<div class="nama">🏷️ ${p.nama || 'Unknown'}</div><div>📡 CHANNEL: ${p.channel || '-'}</div><div>💡 JUDUL: ${p.judulConim || '-'}</div>`;
+                    document.getElementById('infoPeserta').innerHTML = `<div class="nama">🏷️ ${p.nama || 'Unknown'}</div><div>📡 CHANNEL: ${p.channel || '-'}</div><div>💡 JUDUL IMPROVEMENT:<br>${p.judulConim || '-'}</div>`;
                     document.getElementById('infoPeserta').style.display = 'block';
                 }
-            } else document.getElementById('infoPeserta').style.display = 'none';
+            } else {
+                document.getElementById('infoPeserta').style.display = 'none';
+            }
         });
+        
         document.getElementById('filterPesertaRiwayat')?.addEventListener('change', () => renderRiwayatAll());
         document.getElementById('filterJuriRiwayat')?.addEventListener('change', () => renderRiwayatAll());
-        document.getElementById('resetFilterBtn')?.addEventListener('click', () => { document.getElementById('filterPesertaRiwayat').value=''; document.getElementById('filterJuriRiwayat').value=''; renderRiwayatAll(); });
+        document.getElementById('resetFilterBtn')?.addEventListener('click', () => { 
+            document.getElementById('filterPesertaRiwayat').value = ''; 
+            document.getElementById('filterJuriRiwayat').value = ''; 
+            renderRiwayatAll(); 
+        });
     })();
 </script>
 </body>
