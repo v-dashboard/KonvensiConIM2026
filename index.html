@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>PDCARP - PENILAIAN LOMBA (Supabase)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+        }
+
+        body {
+            background: #f1f5f9;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+        }
+        .login-box {
+            background: white;
+            border-radius: 2rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .login-box h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #1e293b;
+            text-transform: uppercase;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 1rem;
+            font-size: 1rem;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 0.8rem;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .login-error {
+            color: #ef4444;
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .login-loading {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+
+        .navbar {
+            background: white;
+            border-radius: 2rem;
+            padding: 0.8rem 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @media (min-width: 640px) {
+            .navbar {
+                justify-content: flex-start;
+                padding: 0.8rem 1.5rem;
+            }
+            body { padding: 20px; }
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 2rem;
+            cursor: pointer;
+            color: #334155;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        @media (min-width: 640px) {
+            .nav-btn { padding: 0.6rem 1.5rem; font-size: 0.9rem; }
+        }
+
+        .nav-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+            background: #e0e7ff;
+            padding: 0.3rem 0.8rem 0.3rem 1rem;
+            border-radius: 2rem;
+        }
+
+        .user-info {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #1e40af;
+            white-space: nowrap;
+        }
+
+        .logout-icon {
+            background: #ef4444;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            display: none;
+        }
+
+        @media (min-width: 640px) { .panel { padding: 1.5rem; } }
+
+        .panel.active-panel { display: block; }
+
+        h2, h3 {
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            color: #0f172a;
+            border-left: 6px solid #3b82f6;
+            padding-left: 0.8rem;
+            font-size: 1rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+        label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            color: #1e293b;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+        }
+        button.btn-primary {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 2rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+        button.btn-primary:hover { background: #2563eb; }
+        button.btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            font-size: 0.65rem;
+            font-weight: bold;
+        }
+        button.btn-warning {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            font-size: 0.65rem;
+        }
+        .card-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+        .card-item {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 0.7rem;
+            border-left: 4px solid #3b82f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .riwayat-card {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            margin-bottom: 0.8rem;
+            border-left: 4px solid #f59e0b;
+        }
+        .riwayat-header {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.3rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .riwayat-peserta { font-weight: bold; color: #1e293b; }
+        .riwayat-juri {
+            background: #e0e7ff;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.65rem;
+        }
+        .riwayat-detail { font-size: 0.7rem; color: #475569; }
+        .riwayat-total {
+            font-weight: bold;
+            color: #3b82f6;
+            margin-top: 0.5rem;
+        }
+        .riwayat-score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0;
+            font-size: 0.7rem;
+            border-bottom: 1px dotted #e2e8f0;
+        }
+        .kriteria-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.7rem;
+        }
+        .kriteria-header {
+            font-weight: 700;
+            font-size: 0.8rem;
+            margin-bottom: 0.7rem;
+            color: #1e293b;
+        }
+        .rubrik-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.8rem;
+        }
+        @media (min-width: 768px) {
+            .rubrik-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        .rubrik-item {
+            padding: 0.4rem;
+            border-radius: 0.5rem;
+            font-size: 0.6rem;
+            line-height: 1.4;
+        }
+        .rubrik-kurang { background: #fef2f2; border-left: 3px solid #ef4444; }
+        .rubrik-cukup { background: #fffbeb; border-left: 3px solid #f59e0b; }
+        .rubrik-baik { background: #eff6ff; border-left: 3px solid #3b82f6; }
+        .rubrik-excellent { background: #ecfdf5; border-left: 3px solid #10b981; }
+        .rubrik-title { font-weight: bold; margin-bottom: 0.2rem; font-size: 0.65rem; }
+        .rating-circles {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+        .circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem;
+            cursor: pointer;
+            background: #f1f5f9;
+            border: 2px solid #cbd5e1;
+            color: #475569;
+        }
+        @media (min-width: 640px) {
+            .circle { width: 36px; height: 36px; font-size: 0.85rem; }
+        }
+        .circle:hover { transform: scale(1.05); background: #e2e8f0; }
+        .circle.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.7rem;
+        }
+        @media (min-width: 640px) {
+            .grid-2 { grid-template-columns: 1fr 1fr; gap: 1rem; }
+        }
+        .alert {
+            background: #dcfce7;
+            color: #166534;
+            padding: 0.7rem;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+        .alert-error { background: #fee2e2; color: #b91c1c; }
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 992px) {
+            .dashboard-stats { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        }
+        .stat-card {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            border: 1px solid #e2e8f0;
+            overflow-x: auto;
+        }
+        .stat-card h4 {
+            margin-bottom: 0.7rem;
+            color: #1e293b;
+            font-size: 0.85rem;
+        }
+        .peserta-score-card {
+            background: white;
+            border-radius: 0.8rem;
+            padding: 0.7rem;
+            margin-bottom: 0.7rem;
+            border: 1px solid #e2e8f0;
+        }
+        .peserta-name {
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+        .score-badge {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.6rem;
+            margin-top: 0.3rem;
+        }
+        .juri-scores {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
+        }
+        .juri-score-item {
+            background: #f1f5f9;
+            border-radius: 1rem;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.6rem;
+        }
+        .info-peserta-card {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 0.8rem;
+            border-radius: 1rem;
+            margin-bottom: 1.2rem;
+        }
+        .riwayat-container { max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+<div id="loginContainer" class="login-container">
+    <div class="login-box">
+        <h2>🔐 LOGIN PDCARP</h2>
+        <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
+        <button id="loginBtn">LOGIN</button>
+        <div id="loginError" class="login-error"></div>
+        <div id="loginLoading" class="login-loading" style="display:none;">⏳ Menghubungkan ke database...</div>
+        <div style="margin-top:1rem; font-size:0.7rem; color:#64748b; text-align:center;">
+            Admin: NKP / ERW<br>
+            Juri: HERU / SITI / BUDI
+        </div>
+    </div>
+</div>
+
+<div id="appContent" style="display: none;">
+    <div class="container">
+        <div class="navbar" id="navbarContainer"></div>
+
+        <div id="managementPanel" class="panel">
+            <h2>⚙️ MANAGEMENT DATA</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:1rem;">
+                <div style="flex:1">
+                    <h3>👨‍⚖️ JURI</h3>
+                    <input type="text" id="juriName" placeholder="Nama Juri">
+                    <button class="btn-primary" id="addJuriBtn" style="margin-top:0.5rem">+ TAMBAH JURI</button>
+                    <div id="juriList" class="card-list"></div>
+                </div>
+                <div style="flex:2">
+                    <h3>👥 PESERTA</h3>
+                    <div class="grid-2">
+                        <input type="text" id="pesertaName" placeholder="Nama Peserta">
+                        <select id="channelSelect">
+                            <option value="SS">SS</option>
+                            <option value="QCC">QCC</option>
+                            <option value="QCP">QCP</option>
+                        </select>
+                    </div>
+                    <input type="text" id="judulConim" placeholder="Judul Improvement">
+                    <button class="btn-primary" id="addPesertaBtn" style="margin-top:0.5rem">+ TAMBAH PESERTA</button>
+                    <div id="pesertaList" class="card-list"></div>
+                </div>
+            </div>
+            <hr style="margin: 1.2rem 0">
+            <h3>📋 KRITERIA PENILAIAN</h3>
+            <div class="grid-2">
+                <input type="text" id="kriteriaKode" placeholder="Kode (1A,2B)">
+                <input type="text" id="kriteriaName" placeholder="Nama Kriteria">
+            </div>
+            <textarea id="descKurang" rows="2" placeholder="Deskripsi KURANG (skor 1-4)"></textarea>
+            <textarea id="descCukup" rows="2" placeholder="Deskripsi CUKUP (skor 5-6)"></textarea>
+            <textarea id="descBaik" rows="2" placeholder="Deskripsi BAIK (skor 7-8)"></textarea>
+            <textarea id="descExcellent" rows="2" placeholder="Deskripsi EXCELLENT (skor 9-10)"></textarea>
+            <div class="grid-2">
+                <input type="number" id="kriteriaBobot" placeholder="Bobot Max" value="10">
+                <input type="number" id="kriteriaUrutan" placeholder="Urutan" value="1">
+            </div>
+            <button class="btn-primary" id="addKriteriaBtn">+ TAMBAH KRITERIA</button>
+            <button class="btn-primary" id="resetDefaultBtn" style="background:#64748b; margin-left:0.5rem">🔄 RESET DEFAULT</button>
+            <div id="kriteriaListMgmt" class="card-list"></div>
+        </div>
+
+        <div id="formPanel" class="panel">
+            <h2>📝 FORM PENILAIAN</h2>
+            <div id="formAlert"></div>
+            <div class="form-group">
+                <label>PILIH PESERTA</label>
+                <select id="dropdownPeserta"></select>
+            </div>
+            <div id="infoPeserta" class="info-peserta-card" style="display:none;"></div>
+            <div id="dynamicKriteriaNilai"></div>
+            <button class="btn-primary" id="submitPenilaianBtn" style="margin-top:1rem; width:100%; display:none;">✅ SUBMIT PENILAIAN</button>
+            <div style="margin-top:1rem; font-weight:bold; border-bottom:2px solid #f59e0b; display:inline-block;">📜 RIWAYAT PENILAIAN</div>
+            <div id="riwayatPenilaian" class="riwayat-container" style="margin-top:0.8rem;"></div>
+        </div>
+
+        <div id="dashboardPanel" class="panel">
+            <h2>📊 DASHBOARD PENILAIAN</h2>
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h4>📊 TOTAL SKOR PER PESERTA</h4>
+                    <canvas id="scoreChart" width="400" height="300"></canvas>
+                </div>
+                <div class="stat-card">
+                    <h4>🏆 RANKING PESERTA</h4>
+                    <div id="scoreCardList"></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <h4>📜 RIWAYAT SEMUA PENILAIAN</h4>
+                <div style="display:flex; gap:0.8rem; flex-wrap:wrap; margin-bottom:1rem;">
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label>FILTER PESERTA</label>
+                        <select id="filterPesertaRiwayat">
+                            <option value="">SEMUA PESERTA</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label>FILTER JURI</label>
+                        <select id="filterJuriRiwayat">
+                            <option value="">SEMUA JURI</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" id="resetFilterBtn" style="background:#64748b; margin-top:1.5rem;">RESET</button>
+                </div>
+                <div id="riwayatAll" class="riwayat-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ========== KONFIGURASI SUPABASE - GANTI DENGAN MILIK ANDA ==========
+        const SUPABASE_URL = "https://pmrwkmekxqvaxeifvenn.supabase.co";      // GANTI DENGAN URL SUPABASE ANDA
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcndrbWVreHF2YXhlaWZ2ZW5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODc2OTUsImV4cCI6MjA5MTM2MzY5NX0.dUsyZUHQCXgjqjPpXHoZSnyRQENwmNTZbWyVyU0qzbw";                    // GANTI DENGAN ANON KEY ANDA
+        // ====================================================================
+        
+        Chart.register(ChartDataLabels);
+        
+        let supabaseClient = null;
+        let currentUser = null;
+        let nilaiKriteria = {};
+        let chartInstance = null;
+        
+        // Data stores
+        let juriData = [];
+        let pesertaData = [];
+        let kriteriaData = [];
+        let penilaianData = [];
+        
+        const DEFAULT_KRITERIA = [
+            { kode:"1A", nama:"IDENTIFIKASI MASALAH & PENENTUAN TEMA", 
+              descKurang:"TIDAK ADA IDENTIFIKASI YANG JELAS", descCukup:"PRIORITAS DITINJAU DARI SEBAGIAN ASPEK", descBaik:"DATA LENGKAP DAN AKURAT", descExcellent:"SEMUA ASPEK MUTU, DATA LENGKAP", bobot:10, urutan:1 },
+            { kode:"2A", nama:"ANALISIS SEBAB AKIBAT", descKurang:"KORELASI TIDAK LOGIS", descCukup:"SEBAGIAN KORELASI TIDAK LOGIS", descBaik:"KORELASI LOGIS", descExcellent:"KORELASI LOGIS & LENGKAP", bobot:10, urutan:2 },
+            { kode:"2C", nama:"PERENCANAAN PERBAIKAN", descKurang:"TIDAK SISTEMATIS", descCukup:"ASPEK 5W+2H TIDAK JELAS", descBaik:"ASPEK 5W+2H GLOBAL", descExcellent:"ASPEK 5W+2H DETAIL", bobot:10, urutan:3 },
+            { kode:"2D", nama:"PEMANFAATAN PERANAN PIHAK TERKAIT", descKurang:"KURANG DIDUKUNG", descCukup:"DIDUKUNG BEBERAPA", descBaik:"DIDUKUNG SEMUA", descExcellent:"DIDUKUNG AKTIF", bobot:10, urutan:4 },
+            { kode:"3B", nama:"KATEGORI SOLUSI", descKurang:"MENIRU", descCukup:"MENINGKATKAN KINERJA", descBaik:"INOVASI NASIONAL", descExcellent:"INVENSI INTERNASIONAL", bobot:10, urutan:5 },
+            { kode:"4B", nama:"PEMANTAUAN & PENERAPAN", descKurang:"SPONTAN", descCukup:"SISTEMATIS TANPA DOKUMENTASI", descBaik:"DOKUMENTASI PROSES UTAMA", descExcellent:"DOKUMENTASI LENGKAP", bobot:10, urutan:6 },
+            { kode:"6A", nama:"EVALUASI HASIL", descKurang:"DIBAWAH 2 ASPEK", descCukup:"2-3 ASPEK", descBaik:"4-5 ASPEK", descExcellent:"6-7 ASPEK", bobot:10, urutan:7 },
+            { kode:"8A", nama:"STANDARDISASI", descKurang:"BELUM DISAHKAN", descCukup:"DISAHKAN TIDAK LENGKAP", descBaik:"LENGKAP TIDAK TERJAMIN", descExcellent:"LENGKAP DAN TERJAMIN", bobot:10, urutan:8 },
+            { kode:"10A", nama:"KEJELASAN PRESENTASI", descKurang:"TIDAK INFORMATIF", descCukup:"KURANG JELAS", descBaik:"ANIMASI KURANG TEPAT", descExcellent:"ANIMASI TEPAT", bobot:10, urutan:9 }
+        ];
+        
+        async function initSupabase() {
+            if (!SUPABASE_URL || SUPABASE_URL === "https://YOUR_PROJECT.supabase.co") {
+                document.getElementById('loginError').innerHTML = '⚠️ Konfigurasi Supabase belum diisi! Ganti URL dan Key di kode.';
+                return false;
+            }
+            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "YOUR_ANON_KEY") {
+                document.getElementById('loginError').innerHTML = '⚠️ Konfigurasi Supabase belum diisi! Ganti Anon Key di kode.';
+                return false;
+            }
+            
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const { error } = await supabaseClient.from('juri').select('count', { count: 'exact', head: true });
+            if (error) {
+                console.error('Supabase error:', error);
+                document.getElementById('loginError').innerHTML = '❌ Gagal koneksi! Pastikan tabel sudah dibuat di Supabase.';
+                return false;
+            }
+            await loadAllData();
+            await ensureDefaultData();
+            return true;
+        }
+        
+        async function ensureDefaultData() {
+            if (kriteriaData.length === 0) {
+                for (const k of DEFAULT_KRITERIA) {
+                    await supabaseClient.from('kriteria').insert([k]);
+                }
+            }
+            if (juriData.length === 0) {
+                await supabaseClient.from('juri').insert([{ id: Date.now(), nama: 'HERU' }, { id: Date.now()+1, nama: 'SITI' }, { id: Date.now()+2, nama: 'BUDI' }]);
+            }
+            await loadAllData();
+        }
+        
+        async function loadAllData() {
+            if (!supabaseClient) return;
+            const [juriRes, pesertaRes, kriteriaRes, penilaianRes] = await Promise.all([
+                supabaseClient.from('juri').select('*').order('id'),
+                supabaseClient.from('peserta').select('*').order('id'),
+                supabaseClient.from('kriteria').select('*').order('urutan'),
+                supabaseClient.from('penilaian').select('*').order('id', { ascending: false })
+            ]);
+            juriData = juriRes.data || [];
+            pesertaData = pesertaRes.data || [];
+            kriteriaData = kriteriaRes.data || [];
+            penilaianData = penilaianRes.data || [];
+            renderAllUI();
+        }
+        
+        async function saveJuri() { if(supabaseClient) await supabaseClient.from('juri').upsert(juriData); }
+        async function savePeserta() { if(supabaseClient) await supabaseClient.from('peserta').upsert(pesertaData); }
+        async function saveKriteria() { if(supabaseClient) await supabaseClient.from('kriteria').upsert(kriteriaData); }
+        async function savePenilaian() { if(supabaseClient) await supabaseClient.from('penilaian').upsert(penilaianData); }
+        
+        async function addJuri(nama) {
+            juriData.push({ id: Date.now(), nama: nama.toUpperCase() });
+            await saveJuri();
+            await loadAllData();
+        }
+        
+        async function deleteJuri(id) {
+            juriData = juriData.filter(j => j.id !== id);
+            penilaianData = penilaianData.filter(p => p.juriId !== id);
+            await saveJuri();
+            await savePenilaian();
+            await loadAllData();
+        }
+        
+        async function addPeserta(nama, channel, judul) {
+            pesertaData.push({ id: Date.now(), nama: nama.toUpperCase(), channel, judulConim: judul.toUpperCase() });
+            await savePeserta();
+            await loadAllData();
+        }
+        
+        async function deletePeserta(id) {
+            pesertaData = pesertaData.filter(p => p.id !== id);
+            penilaianData = penilaianData.filter(p => p.pesertaId !== id);
+            await savePeserta();
+            await savePenilaian();
+            await loadAllData();
+        }
+        
+        async function addKriteria(k) {
+            kriteriaData.push({ ...k, id: Date.now() });
+            await saveKriteria();
+            await loadAllData();
+        }
+        
+        async function updateKriteria(k) {
+            await supabaseClient.from('kriteria').upsert(k);
+            await loadAllData();
+        }
+        
+        async function deleteKriteria(id) {
+            kriteriaData = kriteriaData.filter(k => k.id !== id);
+            await saveKriteria();
+            await loadAllData();
+        }
+        
+        async function submitPenilaianToDb(pesertaId, juriId, nilaiPerKriteria) {
+            penilaianData.unshift({
+                id: Date.now(),
+                pesertaId: parseInt(pesertaId),
+                juriId: parseInt(juriId),
+                tanggal: new Date().toLocaleString(),
+                nilaiPerKriteria: nilaiPerKriteria
+            });
+            await savePenilaian();
+            await loadAllData();
+        }
+        
+        async function resetDefaultKriteria() {
+            await supabaseClient.from('kriteria').delete().neq('id', 0);
+            for (const k of DEFAULT_KRITERIA) {
+                await supabaseClient.from('kriteria').insert([k]);
+            }
+            await loadAllData();
+        }
+        
+        function sudahMenilai(juriId, pesertaId) {
+            return penilaianData.some(p => p.juriId === juriId && p.pesertaId === pesertaId);
+        }
+        
+        function renderAllUI() {
+            renderJuriList();
+            renderPesertaList();
+            renderKriteriaMgmt();
+            renderFormKriteriaNilai();
+            renderDropdownPeserta();
+            renderRiwayatForm();
+            renderDashboard();
+            renderRiwayatAll();
+        }
+        
+        function renderJuriList() {
+            const container = document.getElementById('juriList');
+            if(!container) return;
+            container.innerHTML = juriData.map(j => `<div class="card-item"><span>👨‍⚖️ ${j.nama}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
+            const filterJuri = document.getElementById('filterJuriRiwayat');
+            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nama}</option>`).join('');
+        }
+        
+        function renderPesertaList() {
+            const container = document.getElementById('pesertaList');
+            if(container) {
+                container.innerHTML = pesertaData.map(p => `<div class="card-item"><div><strong>${p.nama}</strong> (${p.channel})<br><small>📌 ${p.judulConim.substring(0,50)}</small></div><button class="btn-danger" onclick="window.deletePesertaWrapper(${p.id})">HAPUS</button></div>`).join('');
+            }
+            const filterPeserta = document.getElementById('filterPesertaRiwayat');
+            if(filterPeserta) filterPeserta.innerHTML = '<option value="">SEMUA PESERTA</option>' + pesertaData.map(p => `<option value="${p.id}">${p.nama}</option>`).join('');
+            renderDropdownPeserta();
+        }
+        
+        function renderDropdownPeserta() {
+            const dp = document.getElementById('dropdownPeserta');
+            if(!dp) return;
+            let daftar = pesertaData;
+            if(currentUser?.role === 'juri' && currentUser.juriId) {
+                daftar = pesertaData.filter(p => !sudahMenilai(currentUser.juriId, p.id));
+            }
+            dp.innerHTML = '<option value="">-- PILIH PESERTA --</option>' + daftar.map(p => `<option value="${p.id}">${p.nama} (${p.channel})</option>`).join('');
+        }
+        
+        function renderKriteriaMgmt() {
+            const container = document.getElementById('kriteriaListMgmt');
+            if(!container) return;
+            container.innerHTML = kriteriaData.map(k => `<div class="card-item" style="flex-direction:column;"><div><strong>[${k.kode}] ${k.nama}</strong> <button class="btn-warning" onclick="window.editKriteriaWrapper(${k.id})">EDIT</button><button class="btn-danger" onclick="window.deleteKriteriaWrapper(${k.id})">HAPUS</button></div></div>`).join('');
+        }
+        
+        function renderFormKriteriaNilai() {
+            const container = document.getElementById('dynamicKriteriaNilai');
+            if(!container) return;
+            if(kriteriaData.length === 0) { container.innerHTML = '<div class="alert alert-error">BELUM ADA KRITERIA</div>'; return; }
+            container.innerHTML = kriteriaData.map(k => {
+                let circles = '';
+                for(let i=1; i<=k.bobot; i++) {
+                    circles += `<div class="circle" id="circle_${k.id}_${i}" data-score="${i}" onclick="window.setRating(${k.id}, ${i})">${i}</div>`;
+                }
+                return `<div class="kriteria-card"><div class="kriteria-header">[${k.kode}] ${k.nama}</div>
+                        <div class="rubrik-grid">
+                            <div class="rubrik-item rubrik-kurang"><div class="rubrik-title">KURANG (1-4)</div><div>${k.descKurang || '-'}</div></div>
+                            <div class="rubrik-item rubrik-cukup"><div class="rubrik-title">CUKUP (5-6)</div><div>${k.descCukup || '-'}</div></div>
+                            <div class="rubrik-item rubrik-baik"><div class="rubrik-title">BAIK (7-8)</div><div>${k.descBaik || '-'}</div></div>
+                            <div class="rubrik-item rubrik-excellent"><div class="rubrik-title">EXCELLENT (9-10)</div><div>${k.descExcellent || '-'}</div></div>
+                        </div>
+                        <div class="rating-circles">${circles}</div>
+                        <div id="selected_value_${k.id}" style="font-size:0.7rem; text-align:center; margin-top:0.3rem;"></div>
+                    </div>`;
+            }).join('');
+        }
+        
+        window.setRating = function(kriteriaId, score) {
+            nilaiKriteria[kriteriaId] = score;
+            for(let i=1; i<=10; i++) {
+                const el = document.getElementById(`circle_${kriteriaId}_${i}`);
+                if(el) i<=score ? el.classList.add('active') : el.classList.remove('active');
+            }
+            const span = document.getElementById(`selected_value_${kriteriaId}`);
+            if(span) span.innerHTML = `NILAI: ${score}`;
+        };
+        
+        async function handleSubmitPenilaian() {
+            const pesertaId = document.getElementById('dropdownPeserta').value;
+            if(!pesertaId) return alert('Pilih peserta');
+            if(currentUser?.role !== 'juri') return alert('Hanya juri yang bisa menilai');
+            if(sudahMenilai(currentUser.juriId, parseInt(pesertaId))) return alert('Anda sudah menilai peserta ini');
+            const nilaiPerKriteria = [];
+            for(const k of kriteriaData) {
+                const val = nilaiKriteria[k.id];
+                if(!val) return alert(`Isi semua kriteria: ${k.nama}`);
+                nilaiPerKriteria.push({ kriteriaId: k.id, nilai: val });
+            }
+            await submitPenilaianToDb(pesertaId, currentUser.juriId, nilaiPerKriteria);
+            nilaiKriteria = {};
+            renderFormKriteriaNilai();
+            renderDropdownPeserta();
+            renderRiwayatForm();
+            renderDashboard();
+            renderRiwayatAll();
+            document.getElementById('dropdownPeserta').value = '';
+            document.getElementById('infoPeserta').style.display = 'none';
+            alert('Penilaian tersimpan!');
+        }
+        
+        function renderRiwayatForm() {
+            const container = document.getElementById('riwayatPenilaian');
+            if(!container) return;
+            let data = [...penilaianData];
+            if(currentUser?.role === 'juri' && currentUser.juriId) data = data.filter(p => p.juriId === currentUser.juriId);
+            if(data.length === 0) { container.innerHTML = '<div class="card-item">Belum ada penilaian</div>'; return; }
+            container.innerHTML = data.map(pen => {
+                const peserta = pesertaData.find(p => p.id === pen.pesertaId);
+                const juri = juriData.find(j => j.id === pen.juriId);
+                let total = 0, detail = '';
+                pen.nilaiPerKriteria.forEach(nk => {
+                    const k = kriteriaData.find(kr => kr.id === nk.kriteriaId);
+                    total += nk.nilai;
+                    detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30)||''}</span><span>${nk.nilai}</span></div>`;
+                });
+                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">${juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal}</small></div></div>`;
+            }).join('');
+        }
+        
+        function renderDashboard() {
+            const pesertaScores = pesertaData.map(p => {
+                const penilaianPeserta = penilaianData.filter(pen => pen.pesertaId === p.id);
+                let totalSkor = 0, skorPerJuri = {};
+                penilaianPeserta.forEach(pen => {
+                    const totalNilai = pen.nilaiPerKriteria.reduce((s, nk) => s + nk.nilai, 0);
+                    totalSkor += totalNilai;
+                    const juri = juriData.find(j => j.id === pen.juriId);
+                    if(juri) skorPerJuri[juri.nama] = (skorPerJuri[juri.nama] || 0) + totalNilai;
+                });
+                return { ...p, totalSkor, skorPerJuri };
+            });
+            pesertaScores.sort((a,b) => b.totalSkor - a.totalSkor);
+            document.getElementById('scoreCardList').innerHTML = pesertaScores.map((ps, i) => `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama} (${ps.channel})</div><div class="score-badge">Total: ${ps.totalSkor}</div><div class="juri-scores">${Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('')}</div></div>`).join('');
+            
+            const juriNames = [...new Set(juriData.map(j => j.nama))];
+            const datasets = juriNames.map((jn, idx) => ({ label: jn, data: pesertaScores.map(ps => ps.skorPerJuri[jn] || 0), backgroundColor: `hsl(${idx * 60}, 70%, 50%)`, stack: 'stack0', datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 9 } } }));
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => p.nama.substring(0,10)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { datalabels: { anchor: 'center', align: 'center' } } } });
+        }
+        
+        function renderRiwayatAll() {
+            const container = document.getElementById('riwayatAll');
+            if(!container) return;
+            let data = [...penilaianData];
+            const filterPeserta = document.getElementById('filterPesertaRiwayat')?.value;
+            const filterJuri = document.getElementById('filterJuriRiwayat')?.value;
+            if(filterPeserta) data = data.filter(p => p.pesertaId === parseInt(filterPeserta));
+            if(filterJuri) data = data.filter(p => p.juriId === parseInt(filterJuri));
+            if(data.length === 0) { container.innerHTML = '<div class="card-item">Tidak ada data</div>'; return; }
+            container.innerHTML = data.map(pen => {
+                const peserta = pesertaData.find(p => p.id === pen.pesertaId);
+                const juri = juriData.find(j => j.id === pen.juriId);
+                let total = 0, detail = '';
+                pen.nilaiPerKriteria.forEach(nk => { const k = kriteriaData.find(kr => kr.id === nk.kriteriaId); total += nk.nilai; detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'}</span><span>${nk.nilai}</span></div>`; });
+                return `<div class="riwayat-card"><div class="riwayat-header"><span>${peserta?.nama}</span><span>${juri?.nama}</span></div>${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal}</small></div>`;
+            }).join('');
+        }
+        
+        window.deleteJuriWrapper = async (id) => { await deleteJuri(id); };
+        window.deletePesertaWrapper = async (id) => { await deletePeserta(id); };
+        window.deleteKriteriaWrapper = async (id) => { await deleteKriteria(id); };
+        window.editKriteriaWrapper = async (id) => {
+            const k = kriteriaData.find(kr => kr.id === id);
+            if(!k) return;
+            const newNama = prompt('Nama kriteria', k.nama);
+            if(newNama) { k.nama = newNama; await updateKriteria(k); }
+        };
+        
+        function login(username) {
+            const upper = username.toUpperCase().trim();
+            if(upper === 'NKP' || upper === 'ERW') {
+                currentUser = { username: upper, role: 'admin', juriId: null };
+                return true;
+            }
+            const juri = juriData.find(j => j.nama.toUpperCase() === upper);
+            if(juri) {
+                currentUser = { username: juri.nama, role: 'juri', juriId: juri.id };
+                return true;
+            }
+            return false;
+        }
+        
+        function showApp() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('appContent').style.display = 'block';
+            renderNavbar();
+            renderAllUI();
+            if(currentUser.role === 'juri') {
+                document.getElementById('submitPenilaianBtn').style.display = 'block';
+                document.getElementById('managementPanel').classList.remove('active-panel');
+                document.getElementById('dashboardPanel').classList.remove('active-panel');
+                document.getElementById('formPanel').classList.add('active-panel');
+            } else {
+                document.getElementById('submitPenilaianBtn').style.display = 'none';
+                document.getElementById('managementPanel').classList.remove('active-panel');
+                document.getElementById('formPanel').classList.remove('active-panel');
+                document.getElementById('dashboardPanel').classList.add('active-panel');
+            }
+            const firstNav = document.querySelector('.nav-btn');
+            if(firstNav) firstNav.click();
+        }
+        
+        function renderNavbar() {
+            const container = document.getElementById('navbarContainer');
+            if(currentUser.role === 'admin') {
+                container.innerHTML = `<button class="nav-btn" data-nav="dashboard">📊 DASHBOARD</button><button class="nav-btn" data-nav="form">📝 FORM</button><button class="nav-btn" data-nav="management">⚙️ MANAGEMENT</button><div class="user-section"><span class="user-info">👑 ${currentUser.username}</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
+            } else {
+                container.innerHTML = `<button class="nav-btn" data-nav="form">📝 FORM</button><div class="user-section"><span class="user-info">👨‍⚖️ ${currentUser.username}</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
+            }
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active-panel'));
+                document.getElementById(`${btn.dataset.nav}Panel`).classList.add('active-panel');
+                if(btn.dataset.nav === 'form') { renderFormKriteriaNilai(); renderDropdownPeserta(); }
+                if(btn.dataset.nav === 'dashboard') renderDashboard();
+            }));
+            document.getElementById('logoutBtnNav')?.addEventListener('click', () => { currentUser=null; document.getElementById('loginContainer').style.display='flex'; document.getElementById('appContent').style.display='none'; });
+        }
+        
+        // Event Listeners
+        document.getElementById('loginBtn')?.addEventListener('click', async () => {
+            const loadingDiv = document.getElementById('loginLoading');
+            loadingDiv.style.display = 'block';
+            document.getElementById('loginError').innerHTML = '';
+            
+            const success = await initSupabase();
+            if (!success) {
+                loadingDiv.style.display = 'none';
+                return;
+            }
+            
+            const username = document.getElementById('loginUsername').value;
+            if(login(username)) {
+                showApp();
+            } else {
+                document.getElementById('loginError').innerHTML = 'Username tidak ditemukan!';
+            }
+            loadingDiv.style.display = 'none';
+        });
+        
+        document.getElementById('loginUsername')?.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+        
+        document.getElementById('addJuriBtn')?.addEventListener('click', async () => {
+            const nama = document.getElementById('juriName').value.trim();
+            if(nama) await addJuri(nama);
+            document.getElementById('juriName').value = '';
+        });
+        
+        document.getElementById('addPesertaBtn')?.addEventListener('click', async () => {
+            const nama = document.getElementById('pesertaName').value.trim();
+            const channel = document.getElementById('channelSelect').value;
+            const judul = document.getElementById('judulConim').value.trim();
+            if(nama && judul) await addPeserta(nama, channel, judul);
+            document.getElementById('pesertaName').value = '';
+            document.getElementById('judulConim').value = '';
+        });
+        
+        document.getElementById('addKriteriaBtn')?.addEventListener('click', async () => {
+            const nama = document.getElementById('kriteriaName').value.trim();
+            if(!nama) return alert('Nama kriteria wajib');
+            await addKriteria({
+                kode: document.getElementById('kriteriaKode').value.trim(),
+                nama: nama,
+                descKurang: document.getElementById('descKurang').value,
+                descCukup: document.getElementById('descCukup').value,
+                descBaik: document.getElementById('descBaik').value,
+                descExcellent: document.getElementById('descExcellent').value,
+                bobot: parseInt(document.getElementById('kriteriaBobot').value) || 10,
+                urutan: parseInt(document.getElementById('kriteriaUrutan').value) || 1
+            });
+            document.getElementById('kriteriaName').value = '';
+            document.getElementById('kriteriaKode').value = '';
+            document.getElementById('descKurang').value = '';
+            document.getElementById('descCukup').value = '';
+            document.getElementById('descBaik').value = '';
+            document.getElementById('descExcellent').value = '';
+        });
+        
+        document.getElementById('resetDefaultBtn')?.addEventListener('click', async () => { if(confirm('Reset ke default kriteria?')) await resetDefaultKriteria(); });
+        document.getElementById('submitPenilaianBtn')?.addEventListener('click', handleSubmitPenilaian);
+        document.getElementById('dropdownPeserta')?.addEventListener('change', (e) => {
+            const pid = e.target.value;
+            if(pid) {
+                const p = pesertaData.find(p => p.id === parseInt(pid));
+                if(p) {
+                    document.getElementById('infoPeserta').innerHTML = `<div class="nama">🏷️ ${p.nama}</div><div>📡 CHANNEL: ${p.channel}</div><div>💡 JUDUL: ${p.judulConim}</div>`;
+                    document.getElementById('infoPeserta').style.display = 'block';
+                }
+            } else document.getElementById('infoPeserta').style.display = 'none';
+        });
+        document.getElementById('filterPesertaRiwayat')?.addEventListener('change', () => renderRiwayatAll());
+        document.getElementById('filterJuriRiwayat')?.addEventListener('change', () => renderRiwayatAll());
+        document.getElementById('resetFilterBtn')?.addEventListener('click', () => { document.getElementById('filterPesertaRiwayat').value=''; document.getElementById('filterJuriRiwayat').value=''; renderRiwayatAll(); });
+    })();
+</script>
+</body>
+</html>
