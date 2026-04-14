@@ -598,6 +598,13 @@
             if (juriData.length === 0) {
                 await supabaseClient.from('juri').insert([{ id: Date.now(), nama: 'HERU' }, { id: Date.now()+1, nama: 'SITI' }, { id: Date.now()+2, nama: 'BUDI' }]);
             }
+            if (pesertaData.length === 0) {
+                await supabaseClient.from('peserta').insert([
+                    { id: Date.now()+3, nama: 'TIM INOVASI QCC', channel: 'QCC', judulConim: 'PENINGKATAN EFISIENSI PRODUKSI DENGAN METODE KAIZEN' },
+                    { id: Date.now()+4, nama: 'TIM DIGITAL SS', channel: 'SS', judulConim: 'DIGITALISASI PROSES BISNIS UNTUK MENINGKATKAN PRODUKTIVITAS' },
+                    { id: Date.now()+5, nama: 'TIM QCP MAJU', channel: 'QCP', judulConim: 'IMPLEMENTASI TOTAL QUALITY MANAGEMENT DI LINI PRODUKSI' }
+                ]);
+            }
             await loadAllData();
         }
         
@@ -636,7 +643,7 @@
         }
         
         async function addPeserta(nama, channel, judul) {
-            pesertaData.push({ id: Date.now(), nama: nama.toUpperCase(), channel, judulConim: judul.toUpperCase() });
+            pesertaData.push({ id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase() });
             await savePeserta();
             await loadAllData();
         }
@@ -704,18 +711,21 @@
         function renderJuriList() {
             const container = document.getElementById('juriList');
             if(!container) return;
-            container.innerHTML = juriData.map(j => `<div class="card-item"><span>👨‍⚖️ ${j.nama}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
+            container.innerHTML = juriData.map(j => `<div class="card-item"><span>👨‍⚖️ ${j.nama || 'Unknown'}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
             const filterJuri = document.getElementById('filterJuriRiwayat');
-            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nama}</option>`).join('');
+            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nama || 'Unknown'}</option>`).join('');
         }
         
         function renderPesertaList() {
             const container = document.getElementById('pesertaList');
             if(container) {
-                container.innerHTML = pesertaData.map(p => `<div class="card-item"><div><strong>${p.nama}</strong> (${p.channel})<br><small>📌 ${p.judulConim.substring(0,50)}</small></div><button class="btn-danger" onclick="window.deletePesertaWrapper(${p.id})">HAPUS</button></div>`).join('');
+                container.innerHTML = pesertaData.map(p => {
+                    const judulDisplay = (p.judulConim && p.judulConim.substring) ? p.judulConim.substring(0,50) : (p.judulConim || '-');
+                    return `<div class="card-item"><div><strong>${p.nama || 'Unknown'}</strong> (${p.channel || '-'})<br><small>📌 ${judulDisplay}${(p.judulConim && p.judulConim.length > 50) ? '...' : ''}</small></div><button class="btn-danger" onclick="window.deletePesertaWrapper(${p.id})">HAPUS</button></div>`;
+                }).join('');
             }
             const filterPeserta = document.getElementById('filterPesertaRiwayat');
-            if(filterPeserta) filterPeserta.innerHTML = '<option value="">SEMUA PESERTA</option>' + pesertaData.map(p => `<option value="${p.id}">${p.nama}</option>`).join('');
+            if(filterPeserta) filterPeserta.innerHTML = '<option value="">SEMUA PESERTA</option>' + pesertaData.map(p => `<option value="${p.id}">${p.nama || 'Unknown'}</option>`).join('');
             renderDropdownPeserta();
         }
         
@@ -726,13 +736,13 @@
             if(currentUser?.role === 'juri' && currentUser.juriId) {
                 daftar = pesertaData.filter(p => !sudahMenilai(currentUser.juriId, p.id));
             }
-            dp.innerHTML = '<option value="">-- PILIH PESERTA --</option>' + daftar.map(p => `<option value="${p.id}">${p.nama} (${p.channel})</option>`).join('');
+            dp.innerHTML = '<option value="">-- PILIH PESERTA --</option>' + daftar.map(p => `<option value="${p.id}">${p.nama || 'Unknown'} (${p.channel || '-'})</option>`).join('');
         }
         
         function renderKriteriaMgmt() {
             const container = document.getElementById('kriteriaListMgmt');
             if(!container) return;
-            container.innerHTML = kriteriaData.map(k => `<div class="card-item" style="flex-direction:column;"><div><strong>[${k.kode}] ${k.nama}</strong> <button class="btn-warning" onclick="window.editKriteriaWrapper(${k.id})">EDIT</button><button class="btn-danger" onclick="window.deleteKriteriaWrapper(${k.id})">HAPUS</button></div></div>`).join('');
+            container.innerHTML = kriteriaData.map(k => `<div class="card-item" style="flex-direction:column;"><div><strong>[${k.kode || ''}] ${k.nama || 'Unknown'}</strong> <button class="btn-warning" onclick="window.editKriteriaWrapper(${k.id})">EDIT</button><button class="btn-danger" onclick="window.deleteKriteriaWrapper(${k.id})">HAPUS</button></div></div>`).join('');
         }
         
         function renderFormKriteriaNilai() {
@@ -741,10 +751,11 @@
             if(kriteriaData.length === 0) { container.innerHTML = '<div class="alert alert-error">BELUM ADA KRITERIA</div>'; return; }
             container.innerHTML = kriteriaData.map(k => {
                 let circles = '';
-                for(let i=1; i<=k.bobot; i++) {
+                const maxBobot = k.bobot || 10;
+                for(let i=1; i<=maxBobot; i++) {
                     circles += `<div class="circle" id="circle_${k.id}_${i}" data-score="${i}" onclick="window.setRating(${k.id}, ${i})">${i}</div>`;
                 }
-                return `<div class="kriteria-card"><div class="kriteria-header">[${k.kode}] ${k.nama}</div>
+                return `<div class="kriteria-card"><div class="kriteria-header">[${k.kode || ''}] ${k.nama || 'Unknown'}</div>
                         <div class="rubrik-grid">
                             <div class="rubrik-item rubrik-kurang"><div class="rubrik-title">KURANG (1-4)</div><div>${k.descKurang || '-'}</div></div>
                             <div class="rubrik-item rubrik-cukup"><div class="rubrik-title">CUKUP (5-6)</div><div>${k.descCukup || '-'}</div></div>
@@ -800,12 +811,14 @@
                 const peserta = pesertaData.find(p => p.id === pen.pesertaId);
                 const juri = juriData.find(j => j.id === pen.juriId);
                 let total = 0, detail = '';
-                pen.nilaiPerKriteria.forEach(nk => {
-                    const k = kriteriaData.find(kr => kr.id === nk.kriteriaId);
-                    total += nk.nilai;
-                    detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30)||''}</span><span>${nk.nilai}</span></div>`;
-                });
-                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">${juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal}</small></div></div>`;
+                if(pen.nilaiPerKriteria && Array.isArray(pen.nilaiPerKriteria)) {
+                    pen.nilaiPerKriteria.forEach(nk => {
+                        const k = kriteriaData.find(kr => kr.id === nk.kriteriaId);
+                        total += nk.nilai || 0;
+                        detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30) || ''}</span><span>${nk.nilai || 0}</span></div>`;
+                    });
+                }
+                return `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">${juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal || '-'}</small></div></div>`;
             }).join('');
         }
         
@@ -814,7 +827,7 @@
                 const penilaianPeserta = penilaianData.filter(pen => pen.pesertaId === p.id);
                 let totalSkor = 0, skorPerJuri = {};
                 penilaianPeserta.forEach(pen => {
-                    const totalNilai = pen.nilaiPerKriteria.reduce((s, nk) => s + nk.nilai, 0);
+                    const totalNilai = Array.isArray(pen.nilaiPerKriteria) ? pen.nilaiPerKriteria.reduce((s, nk) => s + (nk.nilai || 0), 0) : 0;
                     totalSkor += totalNilai;
                     const juri = juriData.find(j => j.id === pen.juriId);
                     if(juri) skorPerJuri[juri.nama] = (skorPerJuri[juri.nama] || 0) + totalNilai;
@@ -822,13 +835,13 @@
                 return { ...p, totalSkor, skorPerJuri };
             });
             pesertaScores.sort((a,b) => b.totalSkor - a.totalSkor);
-            document.getElementById('scoreCardList').innerHTML = pesertaScores.map((ps, i) => `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama} (${ps.channel})</div><div class="score-badge">Total: ${ps.totalSkor}</div><div class="juri-scores">${Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('')}</div></div>`).join('');
+            document.getElementById('scoreCardList').innerHTML = pesertaScores.map((ps, i) => `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'})</div><div class="score-badge">Total: ${ps.totalSkor}</div><div class="juri-scores">${Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('')}</div></div>`).join('');
             
             const juriNames = [...new Set(juriData.map(j => j.nama))];
             const datasets = juriNames.map((jn, idx) => ({ label: jn, data: pesertaScores.map(ps => ps.skorPerJuri[jn] || 0), backgroundColor: `hsl(${idx * 60}, 70%, 50%)`, stack: 'stack0', datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 9 } } }));
             const ctx = document.getElementById('scoreChart').getContext('2d');
             if(chartInstance) chartInstance.destroy();
-            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => p.nama.substring(0,10)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { datalabels: { anchor: 'center', align: 'center' } } } });
+            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => (p.nama || 'Unknown').substring(0,10)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { datalabels: { anchor: 'center', align: 'center' } } } });
         }
         
         function renderRiwayatAll() {
@@ -844,8 +857,14 @@
                 const peserta = pesertaData.find(p => p.id === pen.pesertaId);
                 const juri = juriData.find(j => j.id === pen.juriId);
                 let total = 0, detail = '';
-                pen.nilaiPerKriteria.forEach(nk => { const k = kriteriaData.find(kr => kr.id === nk.kriteriaId); total += nk.nilai; detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'}</span><span>${nk.nilai}</span></div>`; });
-                return `<div class="riwayat-card"><div class="riwayat-header"><span>${peserta?.nama}</span><span>${juri?.nama}</span></div>${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal}</small></div>`;
+                if(pen.nilaiPerKriteria && Array.isArray(pen.nilaiPerKriteria)) {
+                    pen.nilaiPerKriteria.forEach(nk => { 
+                        const k = kriteriaData.find(kr => kr.id === nk.kriteriaId); 
+                        total += nk.nilai || 0; 
+                        detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'}</span><span>${nk.nilai || 0}</span></div>`; 
+                    });
+                }
+                return `<div class="riwayat-card"><div class="riwayat-header"><span>${peserta?.nama || 'Unknown'}</span><span>${juri?.nama || 'Unknown'}</span></div>${detail}<div class="riwayat-total">Total: ${total}</div><small>${pen.tanggal || '-'}</small></div>`;
             }).join('');
         }
         
@@ -865,7 +884,7 @@
                 currentUser = { username: upper, role: 'admin', juriId: null };
                 return true;
             }
-            const juri = juriData.find(j => j.nama.toUpperCase() === upper);
+            const juri = juriData.find(j => j.nama && j.nama.toUpperCase() === upper);
             if(juri) {
                 currentUser = { username: juri.nama, role: 'juri', juriId: juri.id };
                 return true;
@@ -977,7 +996,7 @@
             if(pid) {
                 const p = pesertaData.find(p => p.id === parseInt(pid));
                 if(p) {
-                    document.getElementById('infoPeserta').innerHTML = `<div class="nama">🏷️ ${p.nama}</div><div>📡 CHANNEL: ${p.channel}</div><div>💡 JUDUL: ${p.judulConim}</div>`;
+                    document.getElementById('infoPeserta').innerHTML = `<div class="nama">🏷️ ${p.nama || 'Unknown'}</div><div>📡 CHANNEL: ${p.channel || '-'}</div><div>💡 JUDUL: ${p.judulConim || '-'}</div>`;
                     document.getElementById('infoPeserta').style.display = 'block';
                 }
             } else document.getElementById('infoPeserta').style.display = 'none';
