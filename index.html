@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Digitalisasi Monitoring - PENILAIAN LOMBA </title>
+    <title>Digitalisasi Monitoring - PENILAIAN LOMBA (2 Stream)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -474,7 +474,6 @@
             color: #64748b;
         }
         
-        /* 3 kolom untuk riwayat penilaian */
         .riwayat-3-col {
             display: grid;
             grid-template-columns: repeat(1, 1fr);
@@ -491,22 +490,33 @@
             }
         }
         
-        /* dropdown channel group */
-        .channel-group {
-            margin-bottom: 0.5rem;
+        .stream-badge {
+            display: inline-block;
+            background: #8b5cf6;
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.65rem;
+            margin-left: 0.5rem;
         }
-        .channel-group-title {
-            font-weight: bold;
-            background: #e2e8f0;
-            padding: 0.3rem 0.6rem;
-            border-radius: 0.5rem;
-            font-size: 0.7rem;
-            margin-top: 0.3rem;
-            margin-bottom: 0.3rem;
-            color: #1e293b;
+        .stream-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
-        .channel-group option {
-            padding-left: 1rem;
+        .stream-radio {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #f1f5f9;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            cursor: pointer;
+        }
+        .stream-radio.active {
+            background: #3b82f6;
+            color: white;
         }
     </style>
 </head>
@@ -520,6 +530,7 @@
         <div id="loginLoading" class="login-loading" style="display:none;">⏳ Menghubungkan ke database...</div>
         <div style="margin-top:1rem; font-size:0.7rem; color:#64748b; text-align:center;">
             created by MSTD<br>
+            Stream 1 & Stream 2 berjalan bersamaan
         </div>
     </div>
 </div>
@@ -529,18 +540,26 @@
         <div class="navbar" id="navbarContainer"></div>
 
         <div id="managementPanel" class="panel">
-            <h2>⚙️ MANAGEMENT DATA</h2>
+            <h2>⚙️ MANAGEMENT DATA (2 STREAM)</h2>
+            
+            <!-- STREAM SELECTOR UNTUK ADMIN -->
+            <div class="stream-selector" id="adminStreamSelector">
+                <div class="stream-radio" data-stream="1">🎯 STREAM 1</div>
+                <div class="stream-radio" data-stream="2">🎯 STREAM 2</div>
+            </div>
+            <input type="hidden" id="activeStream" value="1">
+            
             <div style="display:flex; flex-wrap:wrap; gap:1rem;">
                 <div style="flex:1">
-                    <h3>👨‍⚖️ JURI</h3>
+                    <h3>👨‍⚖️ JURI <span id="streamJuriLabel" class="stream-badge">STREAM 1</span></h3>
                     <input type="text" id="juriNIK" placeholder="NIK (digunakan untuk login)">
                     <input type="text" id="juriName" placeholder="Nama Lengkap" style="margin-top:0.5rem;">
                     <button class="btn-primary" id="addJuriBtn" style="margin-top:0.5rem">+ TAMBAH JURI</button>
                     <div id="juriList" class="card-list"></div>
-                    <div class="small-text" style="margin-top:0.5rem;">⚠️ Juri login menggunakan NIK</div>
+                    <div class="small-text" style="margin-top:0.5rem;">⚠️ Juri login menggunakan NIK, otomatis masuk ke stream-nya</div>
                 </div>
                 <div style="flex:2">
-                    <h3>👥 PESERTA</h3>
+                    <h3>👥 PESERTA <span id="streamPesertaLabel" class="stream-badge">STREAM 1</span></h3>
                     <div class="grid-2">
                         <input type="text" id="pesertaName" placeholder="Nama Peserta">
                         <select id="channelSelect">
@@ -557,7 +576,7 @@
                 </div>
             </div>
             <hr style="margin: 1.2rem 0">
-            <h3>📋 KRITERIA PENILAIAN</h3>
+            <h3>📋 KRITERIA PENILAIAN (GLOBAL)</h3>
             <div class="grid-2">
                 <input type="text" id="kriteriaKode" placeholder="Kode (1A,2B)">
                 <input type="text" id="kriteriaName" placeholder="Nama Kriteria">
@@ -576,21 +595,26 @@
         </div>
 
         <div id="formPanel" class="panel">
-            <h2>📝 FORM PENILAIAN</h2>
+            <h2>📝 FORM PENILAIAN - <span id="formStreamLabel">STREAM</span></h2>
             <div id="formAlert"></div>
             <div class="form-group">
-                <label>PILIH PESERTA</label>
+                <label>PILIH PESERTA (Stream sesuai juri)</label>
                 <select id="dropdownPeserta"></select>
             </div>
             <div id="infoPeserta" class="info-peserta-card" style="display:none;"></div>
             <div id="dynamicKriteriaNilai"></div>
             <button class="btn-primary" id="submitPenilaianBtn" style="margin-top:1rem; width:100%; display:none;">✅ SUBMIT PENILAIAN</button>
-            <div style="margin-top:1rem; font-weight:bold; border-bottom:2px solid #f59e0b; display:inline-block;">📜 RIWAYAT PENILAIAN</div>
+            <div style="margin-top:1rem; font-weight:bold; border-bottom:2px solid #f59e0b; display:inline-block;">📜 RIWAYAT PENILAIAN SAYA</div>
             <div id="riwayatPenilaian" class="riwayat-container" style="margin-top:0.8rem;"></div>
         </div>
 
         <div id="dashboardPanel" class="panel">
             <h2>📊 DASHBOARD PENILAIAN</h2>
+            <div class="stream-selector" id="dashboardStreamSelector">
+                <div class="stream-radio" data-stream="1">🎯 STREAM 1</div>
+                <div class="stream-radio" data-stream="2">🎯 STREAM 2</div>
+                <div class="stream-radio" data-stream="all">🏆 SEMUA STREAM</div>
+            </div>
             <div class="dashboard-stats">
                 <div class="stat-card">
                     <h4>📊 TOTAL SKOR PER PESERTA</h4>
@@ -626,10 +650,8 @@
 
 <script>
     (function() {
-        // ========== KONFIGURASI SUPABASE ==========
         const SUPABASE_URL = "https://pmrwkmekxqvaxeifvenn.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcndrbWVreHF2YXhlaWZ2ZW5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODc2OTUsImV4cCI6MjA5MTM2MzY5NX0.dUsyZUHQCXgjqjPpXHoZSnyRQENwmNTZbWyVyU0qzbw";
-        // ==========================================
         
         Chart.register(ChartDataLabels);
         
@@ -643,6 +665,8 @@
         let kriteriaData = [];
         let penilaianData = [];
         
+        let dashboardStream = "all";
+        
         function showToast(message, isError = false) {
             const toast = document.createElement('div');
             toast.className = 'toast-notif';
@@ -653,8 +677,7 @@
         }
         
         const DEFAULT_KRITERIA = [
-            { kode:"1A", nama:"IDENTIFIKASI MASALAH & PENENTUAN TEMA", 
-              descKurang:"TIDAK ADA IDENTIFIKASI YANG JELAS", descCukup:"PRIORITAS DITINJAU DARI SEBAGIAN ASPEK", descBaik:"DATA LENGKAP DAN AKURAT", descExcellent:"SEMUA ASPEK MUTU, DATA LENGKAP", bobot:10, urutan:1 },
+            { kode:"1A", nama:"IDENTIFIKASI MASALAH & PENENTUAN TEMA", descKurang:"TIDAK ADA IDENTIFIKASI YANG JELAS", descCukup:"PRIORITAS DITINJAU DARI SEBAGIAN ASPEK", descBaik:"DATA LENGKAP DAN AKURAT", descExcellent:"SEMUA ASPEK MUTU, DATA LENGKAP", bobot:10, urutan:1 },
             { kode:"2A", nama:"ANALISIS SEBAB AKIBAT", descKurang:"KORELASI TIDAK LOGIS", descCukup:"SEBAGIAN KORELASI TIDAK LOGIS", descBaik:"KORELASI LOGIS", descExcellent:"KORELASI LOGIS & LENGKAP", bobot:10, urutan:2 },
             { kode:"2C", nama:"PERENCANAAN PERBAIKAN", descKurang:"TIDAK SISTEMATIS", descCukup:"ASPEK 5W+2H TIDAK JELAS", descBaik:"ASPEK 5W+2H GLOBAL", descExcellent:"ASPEK 5W+2H DETAIL", bobot:10, urutan:3 },
             { kode:"2D", nama:"PEMANFAATAN PERANAN PIHAK TERKAIT", descKurang:"KURANG DIDUKUNG", descCukup:"DIDUKUNG BEBERAPA", descBaik:"DIDUKUNG SEMUA", descExcellent:"DIDUKUNG AKTIF", bobot:10, urutan:4 },
@@ -669,7 +692,6 @@
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             const { error } = await supabaseClient.from('juri').select('count', { count: 'exact', head: true });
             if (error) {
-                console.error('Supabase error:', error);
                 document.getElementById('loginError').innerHTML = '❌ Gagal koneksi! Pastikan tabel sudah dibuat di Supabase.';
                 return false;
             }
@@ -683,22 +705,6 @@
                 for (const k of DEFAULT_KRITERIA) {
                     await supabaseClient.from('kriteria').insert([k]);
                 }
-                await loadAllData();
-            }
-            if (juriData.length === 0) {
-                await supabaseClient.from('juri').insert([
-                    { id: Date.now(), nik: '1001', nama: 'HERU' }, 
-                    { id: Date.now()+1, nik: '1002', nama: 'SITI' }, 
-                    { id: Date.now()+2, nik: '1003', nama: 'BUDI' }
-                ]);
-                await loadAllData();
-            }
-            if (pesertaData.length === 0) {
-                await supabaseClient.from('peserta').insert([
-                    { id: Date.now()+3, nama: 'TIM INOVASI QCC', channel: 'QCC', judulConim: 'PENINGKATAN EFISIENSI PRODUKSI DENGAN METODE KAIZEN', linkppt: null },
-                    { id: Date.now()+4, nama: 'TIM DIGITAL SS', channel: 'SS', judulConim: 'DIGITALISASI PROSES BISNIS UNTUK MENINGKATKAN PRODUKTIVITAS', linkppt: null },
-                    { id: Date.now()+5, nama: 'TIM QCP MAJU', channel: 'QCP', judulConim: 'IMPLEMENTASI TOTAL QUALITY MANAGEMENT DI LINI PRODUKSI', linkppt: null }
-                ]);
                 await loadAllData();
             }
         }
@@ -718,15 +724,20 @@
             renderAllUI();
         }
         
+        function getCurrentStream() {
+            return parseInt(document.getElementById('activeStream')?.value || '1');
+        }
+        
         async function addJuri(nik, nama) {
-            const newJuri = { id: Date.now(), nik: nik.toUpperCase(), nama: nama.toUpperCase() };
+            const stream = getCurrentStream();
+            const newJuri = { id: Date.now(), nik: nik.toUpperCase(), nama: nama.toUpperCase(), stream: stream };
             const { error } = await supabaseClient.from('juri').insert([newJuri]);
             if (error) {
                 showToast('Gagal tambah juri: ' + error.message, true);
                 return false;
             }
             await loadAllData();
-            showToast('Juri ' + nama + ' (NIK: ' + nik + ') berhasil ditambahkan');
+            showToast(`Juri ${nama} (NIK: ${nik}) ditambahkan ke STREAM ${stream}`);
             return true;
         }
         
@@ -743,14 +754,15 @@
         }
         
         async function addPeserta(nama, channel, judul, linkppt) {
-            const newPeserta = { id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase(), linkppt: linkppt || null };
+            const stream = getCurrentStream();
+            const newPeserta = { id: Date.now(), nama: nama.toUpperCase(), channel: channel, judulConim: judul.toUpperCase(), linkppt: linkppt || null, stream: stream };
             const { error } = await supabaseClient.from('peserta').insert([newPeserta]);
             if (error) {
                 showToast('Gagal tambah peserta: ' + error.message, true);
                 return false;
             }
             await loadAllData();
-            showToast('Peserta ' + nama + ' berhasil ditambahkan');
+            showToast(`Peserta ${nama} ditambahkan ke STREAM ${stream}`);
             return true;
         }
         
@@ -778,7 +790,6 @@
                 bobot: kriteria.bobot || 10,
                 urutan: kriteria.urutan || (kriteriaData.length + 1)
             };
-            
             const { error } = await supabaseClient.from('kriteria').insert([newKriteria]);
             if (error) {
                 showToast('Gagal tambah kriteria: ' + error.message, true);
@@ -861,61 +872,51 @@
         function renderJuriList() {
             const container = document.getElementById('juriList');
             if(!container) return;
-            container.innerHTML = juriData.map(j => `<div class="card-item"><span>👨‍⚖️ <strong>${j.nik || '-'}</strong> - ${j.nama || 'Unknown'}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
+            const stream = getCurrentStream();
+            const filteredJuri = juriData.filter(j => j.stream === stream);
+            container.innerHTML = filteredJuri.map(j => `<div class="card-item"><span>👨‍⚖️ <strong>${j.nik || '-'}</strong> - ${j.nama || 'Unknown'}</span><button class="btn-danger" onclick="window.deleteJuriWrapper(${j.id})">HAPUS</button></div>`).join('');
             const filterJuri = document.getElementById('filterJuriRiwayat');
-            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nik || j.nama || 'Unknown'}</option>`).join('');
+            if(filterJuri) filterJuri.innerHTML = '<option value="">SEMUA JURI</option>' + juriData.map(j => `<option value="${j.id}">${j.nik || j.nama || 'Unknown'} (Stream ${j.stream})</option>`).join('');
         }
         
         function renderPesertaList() {
             const container = document.getElementById('pesertaList');
             if(container) {
-                container.innerHTML = pesertaData.map(p => {
+                const stream = getCurrentStream();
+                const filteredPeserta = pesertaData.filter(p => p.stream === stream);
+                container.innerHTML = filteredPeserta.map(p => {
                     const judulDisplay = (p.judulConim && p.judulConim.substring) ? p.judulConim.substring(0,50) : (p.judulConim || '-');
                     const pptLink = p.linkppt ? `<div class="link-ppt">🔗 <a href="${p.linkppt}" target="_blank">Lihat PPT</a></div>` : '<div class="ppt-warning">⚠️ Belum upload PPT</div>';
                     return `<div class="card-item"><div><strong>${p.nama || 'Unknown'}</strong> (${p.channel || '-'})<br><small>📌 ${judulDisplay}${(p.judulConim && p.judulConim.length > 50) ? '...' : ''}</small>${pptLink}</div><button class="btn-danger" onclick="window.deletePesertaWrapper(${p.id})">HAPUS</button></div>`;
                 }).join('');
             }
             const filterPeserta = document.getElementById('filterPesertaRiwayat');
-            if(filterPeserta) filterPeserta.innerHTML = '<option value="">SEMUA PESERTA</option>' + pesertaData.map(p => `<option value="${p.id}">${p.nama || 'Unknown'}</option>`).join('');
+            if(filterPeserta) filterPeserta.innerHTML = '<option value="">SEMUA PESERTA</option>' + pesertaData.map(p => `<option value="${p.id}">${p.nama || 'Unknown'} (Stream ${p.stream})</option>`).join('');
             renderDropdownPeserta();
         }
         
         function renderDropdownPeserta() {
             const dp = document.getElementById('dropdownPeserta');
             if(!dp) return;
-            
-            // Filter peserta yang belum dinilai (untuk juri)
             let daftar = pesertaData;
             if(currentUser?.role === 'juri' && currentUser.juriId) {
-                daftar = pesertaData.filter(p => !sudahMenilai(currentUser.juriId, p.id));
+                const juri = juriData.find(j => j.id === currentUser.juriId);
+                const streamJuri = juri?.stream || 1;
+                daftar = pesertaData.filter(p => p.stream === streamJuri && !sudahMenilai(currentUser.juriId, p.id));
             }
-            
-            // Kelompokkan berdasarkan channel
             const channels = [...new Set(daftar.map(p => p.channel).filter(c => c))];
             channels.sort();
-            
             let html = '<option value="">-- PILIH PESERTA --</option>';
             for(const channel of channels) {
                 const pesertaChannel = daftar.filter(p => p.channel === channel).sort((a,b) => (a.nama || '').localeCompare(b.nama || ''));
                 if(pesertaChannel.length > 0) {
-                    html += `<optgroup label="📁 CHANNEL ${channel}" class="channel-group">`;
+                    html += `<optgroup label="📁 CHANNEL ${channel}">`;
                     pesertaChannel.forEach(p => {
                         html += `<option value="${p.id}">${p.nama || 'Unknown'}</option>`;
                     });
                     html += `</optgroup>`;
                 }
             }
-            
-            // Handle peserta tanpa channel
-            const tanpaChannel = daftar.filter(p => !p.channel).sort((a,b) => (a.nama || '').localeCompare(b.nama || ''));
-            if(tanpaChannel.length > 0) {
-                html += `<optgroup label="📁 TANPA CHANNEL">`;
-                tanpaChannel.forEach(p => {
-                    html += `<option value="${p.id}">${p.nama || 'Unknown'}</option>`;
-                });
-                html += `</optgroup>`;
-            }
-            
             dp.innerHTML = html;
         }
         
@@ -1007,8 +1008,6 @@
             let data = [...penilaianData];
             if(currentUser?.role === 'juri' && currentUser.juriId) data = data.filter(p => p.juriId === currentUser.juriId);
             if(data.length === 0) { container.innerHTML = '<div class="card-item">📭 Belum ada penilaian</div>'; return; }
-            
-            // 3 kolom layout
             let html = '<div class="riwayat-3-col">';
             data.forEach(pen => {
                 const peserta = pesertaData.find(p => p.id === pen.pesertaId);
@@ -1021,15 +1020,31 @@
                         detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,30) || ''}</span><span><strong>${nk.nilai || 0}</strong></span></div>`;
                     });
                 }
-                html += `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">📌 ${peserta?.nama || 'Unknown'}</span><span class="riwayat-juri">👨‍⚖️ ${juri?.nik || juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">🏆 TOTAL SKOR: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div></div>`;
+                html += `<div class="riwayat-card"><div class="riwayat-header"><span class="riwayat-peserta">📌 ${peserta?.nama || 'Unknown'} (Stream ${peserta?.stream})</span><span class="riwayat-juri">👨‍⚖️ ${juri?.nik || juri?.nama || 'Unknown'}</span></div><div class="riwayat-detail">${detail}<div class="riwayat-total">🏆 TOTAL SKOR: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div></div>`;
             });
             html += '</div>';
             container.innerHTML = html;
         }
         
+        function getFilteredPeserta() {
+            if(dashboardStream === "all") return pesertaData;
+            return pesertaData.filter(p => p.stream === parseInt(dashboardStream));
+        }
+        
+        function getFilteredPenilaian() {
+            let data = [...penilaianData];
+            if(dashboardStream !== "all") {
+                const pesertaIds = pesertaData.filter(p => p.stream === parseInt(dashboardStream)).map(p => p.id);
+                data = data.filter(pen => pesertaIds.includes(pen.pesertaId));
+            }
+            return data;
+        }
+        
         function renderDashboard() {
-            const pesertaScores = pesertaData.map(p => {
-                const penilaianPeserta = penilaianData.filter(pen => pen.pesertaId === p.id);
+            const filteredPeserta = getFilteredPeserta();
+            const filteredPenilaian = getFilteredPenilaian();
+            const pesertaScores = filteredPeserta.map(p => {
+                const penilaianPeserta = filteredPenilaian.filter(pen => pen.pesertaId === p.id);
                 let totalSkor = 0, skorPerJuri = {};
                 penilaianPeserta.forEach(pen => {
                     const totalNilai = Array.isArray(pen.nilaiPerKriteria) ? pen.nilaiPerKriteria.reduce((s, nk) => s + (nk.nilai || 0), 0) : 0;
@@ -1041,18 +1056,16 @@
             });
             pesertaScores.sort((a,b) => b.totalSkor - a.totalSkor);
             
-            // Ranking peserta di bawah total skor - urutan sesuai request
             const rankingHtml = pesertaScores.map((ps, i) => {
                 const juriItems = Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('');
-                return `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'})</div><div class="score-badge">🏆 TOTAL: ${ps.totalSkor}</div><div class="juri-scores">${juriItems}</div></div>`;
+                return `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'}) [Stream ${ps.stream}]</div><div class="score-badge">🏆 TOTAL: ${ps.totalSkor}</div><div class="juri-scores">${juriItems}</div></div>`;
             }).join('');
-            document.getElementById('scoreCardList').innerHTML = rankingHtml;
+            document.getElementById('scoreCardList').innerHTML = rankingHtml || '<div>Tidak ada data</div>';
             
-            // Chart dengan format NIK - Nama
-            const juriListForChart = juriData.map(j => ({ id: j.id, label: `${j.nik || ''}-${j.nama || ''}` }));
-            const datasets = juriListForChart.map((j, idx) => ({ 
-                label: j.label, 
-                data: pesertaScores.map(ps => ps.skorPerJuri[j.label] || 0), 
+            const juriListForChart = [...new Set(juriData.map(j => `${j.nik || ''}-${j.nama || ''}`))];
+            const datasets = juriListForChart.map((jLabel, idx) => ({ 
+                label: jLabel, 
+                data: pesertaScores.map(ps => ps.skorPerJuri[jLabel] || 0), 
                 backgroundColor: `hsl(${idx * 60}, 70%, 50%)`, 
                 stack: 'stack0', 
                 datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 9 } } 
@@ -1065,14 +1078,12 @@
         function renderRiwayatAll() {
             const container = document.getElementById('riwayatAll');
             if(!container) return;
-            let data = [...penilaianData];
+            let data = getFilteredPenilaian();
             const filterPeserta = document.getElementById('filterPesertaRiwayat')?.value;
             const filterJuri = document.getElementById('filterJuriRiwayat')?.value;
             if(filterPeserta) data = data.filter(p => p.pesertaId === parseInt(filterPeserta));
             if(filterJuri) data = data.filter(p => p.juriId === parseInt(filterJuri));
             if(data.length === 0) { container.innerHTML = '<div class="card-item">📭 Tidak ada data</div>'; return; }
-            
-            // 3 kolom layout
             let html = '<div class="riwayat-3-col">';
             data.forEach(pen => {
                 const peserta = pesertaData.find(p => p.id === pen.pesertaId);
@@ -1085,7 +1096,7 @@
                         detail += `<div class="riwayat-score-item"><span>${k?.kode || '?'} ${k?.nama?.substring(0,25) || ''}</span><span>${nk.nilai || 0}</span></div>`; 
                     });
                 }
-                html += `<div class="riwayat-card"><div class="riwayat-header"><span>📌 ${peserta?.nama || 'Unknown'}</span><span>👨‍⚖️ ${juri?.nik || juri?.nama || 'Unknown'}</span></div>${detail}<div class="riwayat-total">🏆 TOTAL: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div>`;
+                html += `<div class="riwayat-card"><div class="riwayat-header"><span>📌 ${peserta?.nama || 'Unknown'} (Stream ${peserta?.stream})</span><span>👨‍⚖️ ${juri?.nik || juri?.nama || 'Unknown'} (Stream ${juri?.stream})</span></div>${detail}<div class="riwayat-total">🏆 TOTAL: ${total}</div><small>📅 ${pen.tanggal || '-'}</small></div>`;
             });
             html += '</div>';
             container.innerHTML = html;
@@ -1111,15 +1122,13 @@
         
         function login(username) {
             const upper = username.toUpperCase().trim();
-            // Admin
             if(upper === 'NKP' || upper === 'ERW') {
                 currentUser = { username: upper, role: 'admin', juriId: null };
                 return true;
             }
-            // Juri login pakai NIK
             const juri = juriData.find(j => j.nik && j.nik.toUpperCase() === upper);
             if(juri) {
-                currentUser = { username: juri.nik, nama: juri.nama, role: 'juri', juriId: juri.id };
+                currentUser = { username: juri.nik, nama: juri.nama, role: 'juri', juriId: juri.id, stream: juri.stream };
                 return true;
             }
             return false;
@@ -1132,6 +1141,7 @@
             renderAllUI();
             if(currentUser.role === 'juri') {
                 document.getElementById('submitPenilaianBtn').style.display = 'block';
+                document.getElementById('formStreamLabel').innerText = `STREAM ${currentUser.stream}`;
                 document.getElementById('managementPanel').classList.remove('active-panel');
                 document.getElementById('dashboardPanel').classList.remove('active-panel');
                 document.getElementById('formPanel').classList.add('active-panel');
@@ -1150,7 +1160,7 @@
             if(currentUser.role === 'admin') {
                 container.innerHTML = `<button class="nav-btn" data-nav="dashboard">📊 DASHBOARD</button><button class="nav-btn" data-nav="form">📝 FORM</button><button class="nav-btn" data-nav="management">⚙️ MANAGEMENT</button><div class="user-section"><span class="user-info">👑 ADMIN ${currentUser.username}</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
             } else {
-                container.innerHTML = `<button class="nav-btn" data-nav="form">📝 FORM</button><div class="user-section"><span class="user-info">👨‍⚖️ ${currentUser.nama || currentUser.username} (${currentUser.username})</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
+                container.innerHTML = `<button class="nav-btn" data-nav="form">📝 FORM</button><div class="user-section"><span class="user-info">👨‍⚖️ ${currentUser.nama || currentUser.username} (${currentUser.username}) [Stream ${currentUser.stream}]</span><button class="logout-icon" id="logoutBtnNav">🚪</button></div>`;
             }
             document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
                 document.querySelectorAll('.panel').forEach(p => p.classList.remove('active-panel'));
@@ -1162,24 +1172,16 @@
             document.getElementById('logoutBtnNav')?.addEventListener('click', () => { currentUser=null; document.getElementById('loginContainer').style.display='flex'; document.getElementById('appContent').style.display='none'; });
         }
         
-        // Event Listeners
+        // EVENT LISTENERS
         document.getElementById('loginBtn')?.addEventListener('click', async () => {
             const loadingDiv = document.getElementById('loginLoading');
             loadingDiv.style.display = 'block';
             document.getElementById('loginError').innerHTML = '';
-            
             const success = await initSupabase();
-            if (!success) {
-                loadingDiv.style.display = 'none';
-                return;
-            }
-            
+            if (!success) { loadingDiv.style.display = 'none'; return; }
             const username = document.getElementById('loginUsername').value;
-            if(login(username)) {
-                showApp();
-            } else {
-                document.getElementById('loginError').innerHTML = 'NIK / Username anda tidak ditemukan! Hubungi MSTD';
-            }
+            if(login(username)) { showApp(); } 
+            else { document.getElementById('loginError').innerHTML = 'NIK / Username anda tidak ditemukan! Hubungi MSTD'; }
             loadingDiv.style.display = 'none';
         });
         
@@ -1192,7 +1194,6 @@
             const nama = document.getElementById('juriName').value.trim();
             if(!nik) { showToast('NIK wajib diisi!', true); return; }
             if(!nama) { showToast('Nama juri wajib diisi!', true); return; }
-            // Cek duplikat NIK
             if(juriData.some(j => j.nik === nik.toUpperCase())) {
                 showToast('NIK sudah terdaftar!', true);
                 return;
@@ -1217,10 +1218,7 @@
         
         document.getElementById('addKriteriaBtn')?.addEventListener('click', async () => {
             const nama = document.getElementById('kriteriaName').value.trim();
-            if(!nama) {
-                showToast('Nama kriteria wajib diisi!', true);
-                return;
-            }
+            if(!nama) { showToast('Nama kriteria wajib diisi!', true); return; }
             await addKriteria({
                 kode: document.getElementById('kriteriaKode').value.trim(),
                 nama: nama,
@@ -1270,6 +1268,33 @@
             document.getElementById('filterJuriRiwayat').value = ''; 
             renderRiwayatAll(); 
         });
+        
+        // Stream selector untuk admin
+        document.querySelectorAll('#adminStreamSelector .stream-radio').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('#adminStreamSelector .stream-radio').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+                const stream = el.dataset.stream;
+                document.getElementById('activeStream').value = stream;
+                document.getElementById('streamJuriLabel').innerText = `STREAM ${stream}`;
+                document.getElementById('streamPesertaLabel').innerText = `STREAM ${stream}`;
+                renderJuriList();
+                renderPesertaList();
+            });
+        });
+        
+        document.querySelectorAll('#dashboardStreamSelector .stream-radio').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('#dashboardStreamSelector .stream-radio').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+                dashboardStream = el.dataset.stream;
+                renderDashboard();
+                renderRiwayatAll();
+            });
+        });
+        
+        document.querySelectorAll('#adminStreamSelector .stream-radio')[0]?.classList.add('active');
+        document.querySelectorAll('#dashboardStreamSelector .stream-radio')[0]?.classList.add('active');
     })();
 </script>
 </body>
