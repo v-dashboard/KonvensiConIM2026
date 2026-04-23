@@ -374,46 +374,56 @@
         }
         .alert-error { background: #fee2e2; color: #b91c1c; }
         .alert-success { background: #dcfce7; color: #166534; }
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+        
+        /* DASHBOARD - FULL WIDTH SINGLE GRID */
+        .dashboard-full {
+            width: 100%;
         }
-        @media (min-width: 992px) {
-            .dashboard-stats { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-        }
-        .stat-card {
+        .stat-card-full {
             background: #f8fafc;
             border-radius: 1rem;
-            padding: 0.8rem;
+            padding: 1rem;
             border: 1px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+            width: 100%;
+        }
+        .stat-card-full h4 {
+            margin-bottom: 1rem;
+            color: #1e293b;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .chart-container {
+            width: 100%;
             overflow-x: auto;
         }
-        .stat-card h4 {
-            margin-bottom: 0.7rem;
-            color: #1e293b;
-            font-size: 0.85rem;
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .ranking-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 0.8rem;
         }
         .peserta-score-card {
             background: white;
             border-radius: 0.8rem;
-            padding: 0.7rem;
-            margin-bottom: 0.7rem;
+            padding: 0.8rem;
             border: 1px solid #e2e8f0;
         }
         .peserta-name {
             font-weight: bold;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             margin-bottom: 0.3rem;
         }
         .score-badge {
             display: inline-block;
             background: #3b82f6;
             color: white;
-            padding: 0.2rem 0.5rem;
+            padding: 0.2rem 0.6rem;
             border-radius: 1rem;
-            font-size: 0.6rem;
+            font-size: 0.7rem;
             margin-top: 0.3rem;
         }
         .juri-scores {
@@ -426,7 +436,7 @@
             background: #f1f5f9;
             border-radius: 1rem;
             padding: 0.2rem 0.6rem;
-            font-size: 0.6rem;
+            font-size: 0.65rem;
         }
         .info-peserta-card {
             background: #f0f9ff;
@@ -541,7 +551,6 @@
         <div id="managementPanel" class="panel">
             <h2>⚙️ MANAGEMENT DATA (2 STREAM)</h2>
             
-            <!-- STREAM SELECTOR UNTUK ADMIN -->
             <div class="stream-selector" id="adminStreamSelector">
                 <div class="stream-radio" data-stream="1">🎯 STREAM 1</div>
                 <div class="stream-radio" data-stream="2">🎯 STREAM 2</div>
@@ -614,17 +623,23 @@
                 <div class="stream-radio" data-stream="2">🎯 STREAM 2</div>
                 <div class="stream-radio" data-stream="all">🏆 SEMUA STREAM</div>
             </div>
-            <div class="dashboard-stats">
-                <div class="stat-card">
-                    <h4>📊 TOTAL SKOR PER PESERTA</h4>
-                    <canvas id="scoreChart" width="400" height="300"></canvas>
+            
+            <!-- FULL WIDTH SINGLE GRID DASHBOARD -->
+            <div class="dashboard-full">
+                <div class="stat-card-full">
+                    <h4>📊 GRAFIK TOTAL SKOR PER PESERTA</h4>
+                    <div class="chart-container">
+                        <canvas id="scoreChart" width="800" height="400"></canvas>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h4>🏆 RANKING PESERTA</h4>
-                    <div id="scoreCardList"></div>
+                
+                <div class="stat-card-full">
+                    <h4>🏆 RANKING & DETAIL SKOR PESERTA</h4>
+                    <div id="scoreCardList" class="ranking-container"></div>
                 </div>
             </div>
-            <div class="stat-card">
+            
+            <div class="stat-card-full">
                 <h4>📜 RIWAYAT SEMUA PENILAIAN</h4>
                 <div style="display:flex; gap:0.8rem; flex-wrap:wrap; margin-bottom:1rem;">
                     <div class="form-group" style="margin-bottom:0; flex:1;">
@@ -1067,11 +1082,11 @@
                 data: pesertaScores.map(ps => ps.skorPerJuri[jLabel] || 0), 
                 backgroundColor: `hsl(${idx * 60}, 70%, 50%)`, 
                 stack: 'stack0', 
-                datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 9 } } 
+                datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 10 } } 
             }));
             const ctx = document.getElementById('scoreChart').getContext('2d');
             if(chartInstance) chartInstance.destroy();
-            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => (p.nama || 'Unknown').substring(0,10)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true, ticks: { font: { size: 9 } } }, y: { stacked: true, beginAtZero: true } }, plugins: { datalabels: { anchor: 'center', align: 'center' }, legend: { position: 'top', labels: { font: { size: 10 } } } } } });
+            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => (p.nama || 'Unknown').substring(0,15)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true, ticks: { font: { size: 11 } } }, y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Total Skor' } } }, plugins: { datalabels: { anchor: 'center', align: 'center' }, legend: { position: 'top', labels: { font: { size: 10 } } } } } });
         }
         
         function renderRiwayatAll() {
@@ -1268,7 +1283,6 @@
             renderRiwayatAll(); 
         });
         
-        // Stream selector untuk admin
         document.querySelectorAll('#adminStreamSelector .stream-radio').forEach(el => {
             el.addEventListener('click', () => {
                 document.querySelectorAll('#adminStreamSelector .stream-radio').forEach(e => e.classList.remove('active'));
