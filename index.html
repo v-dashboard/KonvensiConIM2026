@@ -375,7 +375,7 @@
         .alert-error { background: #fee2e2; color: #b91c1c; }
         .alert-success { background: #dcfce7; color: #166534; }
         
-        /* DASHBOARD - FULL WIDTH SINGLE GRID */
+        /* DASHBOARD STYLES */
         .dashboard-full {
             width: 100%;
         }
@@ -437,6 +437,31 @@
             border-radius: 1rem;
             padding: 0.2rem 0.6rem;
             font-size: 0.65rem;
+        }
+        .channel-charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 768px) {
+            .channel-charts-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 1.5rem;
+            }
+        }
+        .channel-chart-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+        }
+        .channel-chart-card h5 {
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            color: #1e293b;
+            text-align: center;
+            font-weight: bold;
         }
         .info-peserta-card {
             background: #f0f9ff;
@@ -624,15 +649,31 @@
                 <div class="stream-radio" data-stream="all">🏆 SEMUA STREAM</div>
             </div>
             
-            <!-- FULL WIDTH SINGLE GRID DASHBOARD -->
             <div class="dashboard-full">
+                <!-- GRAFIK UTAMA SEMUA PESERTA -->
                 <div class="stat-card-full">
-                    <h4>📊 GRAFIK TOTAL SKOR PER PESERTA</h4>
+                    <h4>📊 GRAFIK TOTAL SKOR PER PESERTA (URUT TERTINGGI → TERENDAH)</h4>
                     <div class="chart-container">
                         <canvas id="scoreChart" width="800" height="400"></canvas>
                     </div>
                 </div>
                 
+                <!-- GRAFIK KHUSUS TOP 5 OSR & TOP 5 SS -->
+                <div class="stat-card-full">
+                    <h4>📊 GRAFIK TOP 5 PER CHANNEL</h4>
+                    <div class="channel-charts-grid">
+                        <div class="channel-chart-card">
+                            <h5>🏆 TOP 5 CHANNEL OSR</h5>
+                            <canvas id="osrChart" width="400" height="300"></canvas>
+                        </div>
+                        <div class="channel-chart-card">
+                            <h5>🏆 TOP 5 CHANNEL SS</h5>
+                            <canvas id="ssChart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RANKING SEMUA PESERTA -->
                 <div class="stat-card-full">
                     <h4>🏆 RANKING & DETAIL SKOR PESERTA</h4>
                     <div id="scoreCardList" class="ranking-container"></div>
@@ -673,6 +714,8 @@
         let currentUser = null;
         let nilaiKriteria = {};
         let chartInstance = null;
+        let osrChartInstance = null;
+        let ssChartInstance = null;
         
         let juriData = [];
         let pesertaData = [];
@@ -1057,6 +1100,8 @@
         function renderDashboard() {
             const filteredPeserta = getFilteredPeserta();
             const filteredPenilaian = getFilteredPenilaian();
+            
+            // Hitung skor semua peserta
             const pesertaScores = filteredPeserta.map(p => {
                 const penilaianPeserta = filteredPenilaian.filter(pen => pen.pesertaId === p.id);
                 let totalSkor = 0, skorPerJuri = {};
@@ -1068,14 +1113,11 @@
                 });
                 return { ...p, totalSkor, skorPerJuri };
             });
+            
+            // Urutkan dari tertinggi ke terendah untuk chart utama
             pesertaScores.sort((a,b) => b.totalSkor - a.totalSkor);
             
-            const rankingHtml = pesertaScores.map((ps, i) => {
-                const juriItems = Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('');
-                return `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'}) [Stream ${ps.stream}]</div><div class="score-badge">🏆 TOTAL: ${ps.totalSkor}</div><div class="juri-scores">${juriItems}</div></div>`;
-            }).join('');
-            document.getElementById('scoreCardList').innerHTML = rankingHtml || '<div>Tidak ada data</div>';
-            
+            // RENDER CHART UTAMA (semua peserta)
             const juriListForChart = [...new Set(juriData.map(j => `${j.nik || ''}-${j.nama || ''}`))];
             const datasets = juriListForChart.map((jLabel, idx) => ({ 
                 label: jLabel, 
@@ -1084,9 +1126,97 @@
                 stack: 'stack0', 
                 datalabels: { anchor: 'center', align: 'center', formatter: v => v || '', color: 'white', font: { size: 10 } } 
             }));
+            
             const ctx = document.getElementById('scoreChart').getContext('2d');
             if(chartInstance) chartInstance.destroy();
-            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: pesertaScores.map(p => (p.nama || 'Unknown').substring(0,15)), datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: true, ticks: { font: { size: 11 } } }, y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Total Skor' } } }, plugins: { datalabels: { anchor: 'center', align: 'center' }, legend: { position: 'top', labels: { font: { size: 10 } } } } } });
+            chartInstance = new Chart(ctx, { 
+                type: 'bar', 
+                data: { 
+                    labels: pesertaScores.map(p => p.nama || 'Unknown'), 
+                    datasets 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true, 
+                    scales: { 
+                        x: { 
+                            stacked: true, 
+                            ticks: { font: { size: 11 } },
+                            title: { display: true, text: 'Peserta (diurutkan dari skor tertinggi → terendah)' }
+                        }, 
+                        y: { 
+                            stacked: true, 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Total Skor' } 
+                        } 
+                    }, 
+                    plugins: { 
+                        datalabels: { anchor: 'center', align: 'center' }, 
+                        legend: { position: 'top', labels: { font: { size: 10 } } } 
+                    } 
+                } 
+            });
+            
+            // RENDER GRAFIK TOP 5 OSR
+            const osrPeserta = pesertaScores.filter(p => p.channel === 'OSR');
+            const top5Osr = [...osrPeserta].sort((a,b) => b.totalSkor - a.totalSkor).slice(0,5);
+            const osrCtx = document.getElementById('osrChart')?.getContext('2d');
+            if(osrCtx) {
+                if(osrChartInstance) osrChartInstance.destroy();
+                osrChartInstance = new Chart(osrCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: top5Osr.map(p => p.nama || 'Unknown'),
+                        datasets: [{
+                            label: 'Total Skor',
+                            data: top5Osr.map(p => p.totalSkor),
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 8,
+                            datalabels: { anchor: 'end', align: 'top', formatter: v => v, color: '#f59e0b', font: { weight: 'bold' } }
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Total Skor' } } },
+                        plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top' } }
+                    }
+                });
+            }
+            
+            // RENDER GRAFIK TOP 5 SS
+            const ssPeserta = pesertaScores.filter(p => p.channel === 'SS');
+            const top5Ss = [...ssPeserta].sort((a,b) => b.totalSkor - a.totalSkor).slice(0,5);
+            const ssCtx = document.getElementById('ssChart')?.getContext('2d');
+            if(ssCtx) {
+                if(ssChartInstance) ssChartInstance.destroy();
+                ssChartInstance = new Chart(ssCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: top5Ss.map(p => p.nama || 'Unknown'),
+                        datasets: [{
+                            label: 'Total Skor',
+                            data: top5Ss.map(p => p.totalSkor),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 8,
+                            datalabels: { anchor: 'end', align: 'top', formatter: v => v, color: '#3b82f6', font: { weight: 'bold' } }
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Total Skor' } } },
+                        plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top' } }
+                    }
+                });
+            }
+            
+            // RENDER RANKING
+            const rankingHtml = pesertaScores.map((ps, i) => {
+                const juriItems = Object.entries(ps.skorPerJuri).map(([j,s]) => `<div class="juri-score-item">${j}: ${s}</div>`).join('');
+                return `<div class="peserta-score-card"><div class="peserta-name">${i+1}. ${ps.nama || 'Unknown'} (${ps.channel || '-'}) [Stream ${ps.stream}]</div><div class="score-badge">🏆 TOTAL: ${ps.totalSkor}</div><div class="juri-scores">${juriItems}</div></div>`;
+            }).join('');
+            document.getElementById('scoreCardList').innerHTML = rankingHtml || '<div>Tidak ada data</div>';
         }
         
         function renderRiwayatAll() {
